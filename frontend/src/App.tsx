@@ -3,6 +3,7 @@ import React from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { Team, Player, MatchType, OptimizedMatch } from "./types";
 import { TeamList, MatchBox, Planning, MatchManager } from "./components";
+import { parseMatchText } from "./utils/matchParser";
 
 function App() {
   const createDefaultPlayers = (teamId: string): Player[] => {
@@ -333,6 +334,53 @@ function App() {
     }
   };
 
+  const handleImport = (text: string) => {
+    try {
+      const parsed = parseMatchText(text);
+      
+      // Update team names
+      setTeams([
+        { id: "team1", name: parsed.team1 },
+        { id: "team2", name: parsed.team2 }
+      ]);
+
+      // Create players map to avoid duplicates
+      const playersMap = new Map<string, Player>();
+
+      // Process all matches to collect unique players
+      parsed.matches.forEach(match => {
+        match.players.forEach((player, index) => {
+          const teamId = index < match.players.length / 2 ? "team1" : "team2";
+          const playerId = `${teamId}-${player.name}`;
+
+          if (!playersMap.has(playerId)) {
+            playersMap.set(playerId, {
+              id: playerId,
+              name: player.name,
+              teamId: teamId,
+              isFemale: player.isFemale
+            });
+          }
+        });
+      });
+
+      // Update players state
+      setTeams(
+        teams.map((team) => ({
+          ...team,
+          players: Array.from(playersMap.values()).filter(
+            (player) => player.teamId === team.id
+          ),
+        }))
+      );
+
+
+
+    } catch (error) {
+      console.error("Error importing matches:", error);
+    }
+  };
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-gray-50">
@@ -380,10 +428,7 @@ function App() {
             <div className="bg-white rounded-lg shadow-md p-4 col-span-1">
               <MatchManager
                 matches={matches}
-                onImport={(text) => {
-                  // TODO: Implement import logic
-                  console.log("Import text:", text);
-                }}
+                onImport={handleImport}
                 onOptimize={() => {
                   // TODO: Implement optimize logic
                   console.log("Optimize matches");
