@@ -1,46 +1,32 @@
-import React from 'react';
-import { Droppable } from '@hello-pangea/dnd';
-import { Man, Woman } from '@styled-icons/ionicons-solid';
-import { Player } from '../types';
+import React from "react";
+import { Droppable } from "@hello-pangea/dnd";
+import { UserIcon } from "@heroicons/react/24/outline";
 
 interface PlayerSlotProps {
-  slotId: string;
-  isFemale: boolean;
-  acceptedTeam: 'team1' | 'team2';
-  player?: Player;
+  droppableId: string;
+  teamColor: string;
 }
 
-export const PlayerSlot: React.FC<PlayerSlotProps> = ({ 
-  slotId, 
-  isFemale, 
-  acceptedTeam,
-  player 
-}) => {
-  const Icon = isFemale ? Woman : Man;
-  const teamColorClass = acceptedTeam === 'team1' ? 'team1' : 'team2';
-
+const PlayerSlot: React.FC<PlayerSlotProps> = ({ droppableId, teamColor }) => {
   return (
-    <Droppable droppableId={slotId}>
+    <Droppable droppableId={droppableId}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
           {...provided.droppableProps}
           className={`
-            h-8 px-1.5 py-1 
-            box-border
-            border-2 border-dashed border-${teamColorClass}
-            rounded
-            ${snapshot.isDraggingOver ? `bg-${teamColorClass}/30` : `bg-${teamColorClass}/10`}
-            hover:bg-${teamColorClass}/30
-            flex items-center justify-center
-            transition-all duration-200
-            relative
+            flex items-center justify-center p-2 
+            border-2 rounded-md
+            ${snapshot.isDraggingOver ? "bg-blue-50" : "bg-gray-50"}
+            border-${teamColor}
           `}
         >
-          <Icon className={`w-5 h-5 opacity-20 text-${teamColorClass}`} />
+          <UserIcon className="w-5 h-5 text-gray-400" />
           {provided.placeholder}
         </div>
       )}
     </Droppable>
   );
 };
+
+export default PlayerSlot;

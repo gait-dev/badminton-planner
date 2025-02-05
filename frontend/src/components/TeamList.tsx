@@ -1,32 +1,23 @@
-import React from 'react';
-import { Draggable, Droppable } from '@hello-pangea/dnd';
-import { Man, Woman } from '@styled-icons/ionicons-solid';
-import { Player, Team } from '../types';
+import React from "react";
+import { Droppable, Draggable } from "@hello-pangea/dnd";
+import { Team, Player } from "../types";
+import MaleIcon from '@mui/icons-material/Male';
+import FemaleIcon from '@mui/icons-material/Female';
 
 interface TeamListProps {
   team: Team;
-  teamColor: string;
-  onPlayerNameChange: (playerId: string, newName: string) => void;
-  onPlayerGenderChange: (playerId: string, isFemale: boolean) => void;
-  onAddPlayer: (teamId: string) => void;
+  onAddPlayer: () => void;
+  onUpdatePlayer: (playerId: string, updates: Partial<Player>) => void;
 }
 
-export const TeamList: React.FC<TeamListProps> = ({
-  team,
-  teamColor,
-  onPlayerNameChange,
-  onPlayerGenderChange,
-  onAddPlayer,
-}) => {
-  const teamColorClass = team.id === 'team1' ? 'team1' : 'team2';
-
+const TeamList: React.FC<TeamListProps> = ({ team, onAddPlayer, onUpdatePlayer }) => {
   return (
-    <div className="flex-1 p-4 bg-white rounded-lg shadow-md">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-800">{team.name}</h3>
+    <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="relative mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">{team.name}</h2>
         <button
-          onClick={() => onAddPlayer(team.id)}
-          className="px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600 transition-colors"
+          onClick={onAddPlayer}
+          className="absolute right-0 top-0 px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
         >
           + Joueur
         </button>
@@ -37,7 +28,7 @@ export const TeamList: React.FC<TeamListProps> = ({
           <div
             {...provided.droppableProps}
             ref={provided.innerRef}
-            className="flex flex-col gap-2"
+            className="space-y-2"
           >
             {team.players.map((player, index) => (
               <Draggable
@@ -51,50 +42,37 @@ export const TeamList: React.FC<TeamListProps> = ({
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                     className={`
-                      flex items-center gap-2 p-2
-                      bg-white border border-gray-200 rounded shadow-sm
-                      border-l-4 border-l-${teamColorClass}
-                      hover:bg-gray-50 transition-colors
+                      flex items-center justify-between p-3 
+                      bg-white rounded-lg border border-gray-200
+                      hover:shadow-sm transition-shadow
+                      ${team.id === "team1" ? "border-l-4 border-l-team1" : "border-l-4 border-l-team2"}
                     `}
                   >
-                    <input
-                      type="text"
-                      value={player.name}
-                      onChange={(e) => onPlayerNameChange(player.id, e.target.value)}
-                      className={`
-                        flex-1 px-2 py-1 
-                        border border-transparent rounded
-                        hover:border-gray-300 
-                        focus:border-${teamColorClass} focus:outline-none 
-                        transition-colors
-                      `}
-                    />
-                    <div className="flex gap-1">
+                    <span className="text-gray-800">{player.name}</span>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => onPlayerGenderChange(player.id, false)}
+                        onClick={() => onUpdatePlayer(player.id, { isFemale: false })}
                         className={`
-                          p-1.5 rounded transition-colors
+                          p-1 rounded transition-colors text-xs
                           ${!player.isFemale 
-                            ? `bg-${teamColorClass}/30` 
-                            : 'bg-gray-100'
-                          }
-                          hover:bg-${teamColorClass}/50
+                            ? "bg-blue-100 text-blue-600" 
+                            : "bg-gray-100 text-gray-400"}
+                          hover:bg-blue-50
                         `}
                       >
-                        <Man className="w-4 h-4" />
+                        <MaleIcon></MaleIcon>
                       </button>
                       <button
-                        onClick={() => onPlayerGenderChange(player.id, true)}
+                        onClick={() => onUpdatePlayer(player.id, { isFemale: true })}
                         className={`
-                          p-1.5 rounded transition-colors
+                          p-1 rounded transition-colors text-xs
                           ${player.isFemale 
-                            ? `bg-${teamColorClass}/30` 
-                            : 'bg-gray-100'
-                          }
-                          hover:bg-${teamColorClass}/50
+                            ? "bg-pink-100 text-pink-600" 
+                            : "bg-gray-100 text-gray-400"}
+                          hover:bg-pink-50
                         `}
                       >
-                        <Woman className="w-4 h-4" />
+                        <FemaleIcon></FemaleIcon>
                       </button>
                     </div>
                   </div>
@@ -108,3 +86,5 @@ export const TeamList: React.FC<TeamListProps> = ({
     </div>
   );
 };
+
+export default TeamList;
