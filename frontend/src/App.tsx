@@ -300,7 +300,7 @@ function App() {
     currentPlayers: Player[]
   ): boolean => {
     const maxPlayers =
-      matchType.startsWith("D") || matchType.startsWith("MX") ? 4 : 2;
+      matchType.startsWith("D") || matchType.startsWith("DX") ? 4 : 2;
     if (currentPlayers.length >= maxPlayers) return false;
 
     const teamPlayersCount = currentPlayers.filter(
@@ -340,19 +340,19 @@ function App() {
   const handleImport = (text: string) => {
     try {
       const parsed = parseMatchText(text);
-      
+
       // Update team names
       setTeams([
         { id: "team1", name: parsed.team1, players: [] },
-        { id: "team2", name: parsed.team2, players: [] }
+        { id: "team2", name: parsed.team2, players: [] },
       ]);
 
       // Create players map to avoid duplicates
       const playersMap = new Map<string, Player>();
 
       // Process all matches to collect unique players
-      parsed.matches.forEach(match => {
-        match.players.forEach(player => {
+      parsed.matches.forEach((match) => {
+        match.players.forEach((player) => {
           const playerId = `${player.team}-${player.name}`;
 
           if (!playersMap.has(playerId)) {
@@ -360,33 +360,37 @@ function App() {
               id: playerId,
               name: player.name,
               teamId: player.team,
-              isFemale: player.isFemale
+              isFemale: player.isFemale,
             });
           }
         });
       });
 
       // Update teams with their players
-      setTeams(teams => teams.map(team => ({
-        ...team,
-        players: Array.from(playersMap.values()).filter(p => p.teamId === team.id)
-      })));
+      setTeams((teams) =>
+        teams.map((team) => ({
+          ...team,
+          players: Array.from(playersMap.values()).filter(
+            (p) => p.teamId === team.id
+          ),
+        }))
+      );
 
-      // Create optimized matches and sort them according to MATCH_ORDER
+      // Create optimized matches
       const matchesMap = new Map<string, OptimizedMatch>();
-      
-      parsed.matches.forEach(match => {
-        const allowedPlayers: Omit<Player, "id" | "name">[] = [];
-        const matchPlayers: Player[] = [];
 
-        match.players.forEach(player => {
+      parsed.matches.forEach((match) => {
+        const allowedPlayers: Omit<Player, "id" | "name">[] = [];
+        let matchPlayers: Player[] = [];
+
+        match.players.forEach((player, index) => {
           const playerId = `${player.team}-${player.name}`;
           const playerObj = playersMap.get(playerId);
 
           // Add to allowed players pattern
           allowedPlayers.push({
             teamId: player.team,
-            isFemale: player.isFemale
+            isFemale: player.isFemale,
           });
 
           // Add actual player if found
@@ -395,16 +399,28 @@ function App() {
           }
         });
 
+        // Réorganiser les joueurs par équipe
+        if (match.type.startsWith('D')) { // Pour les doubles uniquement
+          const team1Players = matchPlayers.filter(p => p.teamId === 'team1');
+          const team2Players = matchPlayers.filter(p => p.teamId === 'team2');
+          matchPlayers = [...team1Players, ...team2Players];
+
+          // Réorganiser aussi les allowedPlayers
+          const team1Allowed = allowedPlayers.filter(p => p.teamId === 'team1');
+          const team2Allowed = allowedPlayers.filter(p => p.teamId === 'team2');
+          allowedPlayers.splice(0, allowedPlayers.length, ...team1Allowed, ...team2Allowed);
+        }
+
         matchesMap.set(match.type, {
           type: match.type,
           allowedPlayers,
           players: matchPlayers,
           hasConflict: false,
-          conflictReason: ""
+          conflictReason: "",
         });
       });
 
-      // Create new matches array in the correct order
+      // Créer les matchs dans l'ordre fixe
       const newMatches = MATCH_ORDER.map(matchType => {
         const match = matchesMap.get(matchType);
         if (!match) {
@@ -421,7 +437,6 @@ function App() {
       });
 
       setMatches(newMatches);
-
     } catch (error) {
       console.error("Error importing matches:", error);
     }

@@ -24,7 +24,7 @@ const PlayerSlot: React.FC<PlayerSlotProps> = ({
           ref={provided.innerRef}
           {...provided.droppableProps}
           className={`
-            flex items-center justify-between p-2 
+            flex items-center justify-between p-1 
             border-2 border-dashed rounded-md mb-4
             ${
               snapshot.isDraggingOver
@@ -47,7 +47,7 @@ const PlayerSlot: React.FC<PlayerSlotProps> = ({
               <MaleIcon className="text-blue-200" />
             )}
             {currentPlayer && (
-              <span className="text-gray-700">{currentPlayer.name}</span>
+              <span className="text-gray-700 text-xs">{currentPlayer.name}</span>
             )}
           </div>
           {currentPlayer && onRemove && (

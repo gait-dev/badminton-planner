@@ -19,7 +19,7 @@ const MatchImporter: React.FC<MatchImporterProps> = ({ onImport }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+    <div className="bg-white rounded-lg shadow-sm p-4">
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -28,7 +28,7 @@ const MatchImporter: React.FC<MatchImporterProps> = ({ onImport }) => {
       />
       <button
         onClick={handleImport}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+        className="bg-sky-500 text-white mt-5 w-full  px-4 py-2 rounded-md hover:bg-sky-400"
       >
         Importer
       </button>

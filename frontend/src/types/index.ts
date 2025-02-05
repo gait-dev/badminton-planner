@@ -3,8 +3,8 @@ export type MatchType = "SH1" | "SH2" | "SD1" | "SD2" | "DH1" | "DD1" | "DX1" | 
 export interface Player {
   id: string;
   name: string;
-  teamId: string;
   isFemale: boolean;
+  teamId: string;
 }
 
 export interface Team {
@@ -19,11 +19,11 @@ export interface OptimizedMatch {
   allowedPlayers: Omit<Player, "id" | "name">[];
   hasConflict: boolean;
   conflictReason?: string;
-  startTime?: number;
-  court?: number;
+  court: number;
+  startTime: number;
 }
 
 export interface Rotation {
   matches: OptimizedMatch[];
   startTimes: Date[];
-}
+} 

@@ -276,12 +276,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     <div className="bg-white rounded-lg shadow-sm p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-800">Planning</h2>
-        <button
-          onClick={handleOptimize}
-          className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-        >
-          Optimiser l'ordre des matchs
-        </button>
       </div>
 
       <div className="space-y-2">
@@ -305,6 +299,13 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
           </div>
         </div>
       )}
+
+      <button
+        onClick={handleOptimize}
+        className="bg-sky-500 text-white mt-5 w-full px-4 py-2 rounded-md hover:bg-sky-400"
+      >
+        Ordre des matchs
+      </button>
     </div>
   );
 };
