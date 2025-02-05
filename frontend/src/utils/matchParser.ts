@@ -1,6 +1,7 @@
 interface ParsedPlayer {
   name: string;
   isFemale: boolean;
+  team: string;
 }
 
 interface ParsedMatch {
@@ -12,6 +13,16 @@ interface ParsedResult {
   team1: string;
   team2: string;
   matches: ParsedMatch[];
+}
+
+function getTeamId(matchType: string, playerIndex: number): string {
+  // Pour les matchs à 4 joueurs (DH, DD, DX)
+  if (matchType.startsWith('D')) {
+    // Joueur 1 et 3 -> team1, Joueur 2 et 4 -> team2
+    return playerIndex % 2 === 0 ? "team1" : "team2";
+  }
+  // Pour les matchs à 2 joueurs (SH, SD)
+  return playerIndex === 0 ? "team1" : "team2";
 }
 
 export function parseMatchText(text: string): ParsedResult {
@@ -59,11 +70,12 @@ export function parseMatchText(text: string): ParsedResult {
       // Parse players if they are on the same line
       const playerNames = line.match(/\d{8}\s*-\s*([^(]+)/g);
       if (playerNames) {
-        playerNames.forEach(playerMatch => {
+        playerNames.forEach((playerMatch, index) => {
           const name = playerMatch.split('-')[1].trim();
           if (currentMatch) {
-            const isFemale = isPlayerFemale(matchType, currentMatch.players.length, name);
-            currentMatch.players.push({ name, isFemale });
+            const isFemale = isPlayerFemale(matchType, index, name);
+            const team = getTeamId(matchType, index);
+            currentMatch.players.push({ name, isFemale, team });
           }
         });
       }
@@ -72,10 +84,11 @@ export function parseMatchText(text: string): ParsedResult {
     else if (line.includes(' - ') && !line.includes('Victoires') && !line.includes('Totaux')) {
       const playerNames = line.match(/\d{8}\s*-\s*([^(]+)/g);
       if (playerNames && currentMatch) {
-        playerNames.forEach(playerMatch => {
+        playerNames.forEach((playerMatch, index) => {
           const name = playerMatch.split('-')[1].trim();
           const isFemale = isPlayerFemale(currentMatch.type, currentMatch.players.length, name);
-          currentMatch.players.push({ name, isFemale });
+          const team = getTeamId(currentMatch.type, currentMatch.players.length);
+          currentMatch.players.push({ name, isFemale, team });
         });
       }
     }

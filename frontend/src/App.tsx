@@ -340,8 +340,8 @@ function App() {
       
       // Update team names
       setTeams([
-        { id: "team1", name: parsed.team1 },
-        { id: "team2", name: parsed.team2 }
+        { id: "team1", name: parsed.team1, players: [] },
+        { id: "team2", name: parsed.team2, players: [] }
       ]);
 
       // Create players map to avoid duplicates
@@ -349,32 +349,57 @@ function App() {
 
       // Process all matches to collect unique players
       parsed.matches.forEach(match => {
-        match.players.forEach((player, index) => {
-          const teamId = index < match.players.length / 2 ? "team1" : "team2";
-          const playerId = `${teamId}-${player.name}`;
+        match.players.forEach(player => {
+          const playerId = `${player.team}-${player.name}`;
 
           if (!playersMap.has(playerId)) {
             playersMap.set(playerId, {
               id: playerId,
               name: player.name,
-              teamId: teamId,
+              teamId: player.team,
               isFemale: player.isFemale
             });
           }
         });
       });
 
-      // Update players state
-      setTeams(
-        teams.map((team) => ({
-          ...team,
-          players: Array.from(playersMap.values()).filter(
-            (player) => player.teamId === team.id
-          ),
-        }))
-      );
+      // Update teams with their players
+      setTeams(teams => teams.map(team => ({
+        ...team,
+        players: Array.from(playersMap.values()).filter(p => p.teamId === team.id)
+      })));
 
+      // Create optimized matches
+      const newMatches: OptimizedMatch[] = parsed.matches.map(match => {
+        const allowedPlayers: Omit<Player, "id" | "name">[] = [];
+        const matchPlayers: Player[] = [];
 
+        match.players.forEach((player, index) => {
+          const playerId = `${player.team}-${player.name}`;
+          const playerObj = playersMap.get(playerId);
+
+          // Add to allowed players pattern
+          allowedPlayers.push({
+            teamId: player.team,
+            isFemale: player.isFemale
+          });
+
+          // Add actual player if found
+          if (playerObj) {
+            matchPlayers.push(playerObj);
+          }
+        });
+
+        return {
+          type: match.type,
+          allowedPlayers,
+          players: matchPlayers,
+          hasConflict: false,
+          conflictReason: ""
+        };
+      });
+
+      setMatches(newMatches);
 
     } catch (error) {
       console.error("Error importing matches:", error);
