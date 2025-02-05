@@ -1,13 +1,22 @@
 import React from "react";
 import { Droppable } from "@hello-pangea/dnd";
-import { UserIcon } from "@heroicons/react/24/outline";
+import MaleIcon from "@mui/icons-material/Male";
+import FemaleIcon from "@mui/icons-material/Female";
+import { Player } from "../types";
 
 interface PlayerSlotProps {
   droppableId: string;
-  teamColor: string;
+  allowedPlayer: Omit<Player, "id" | "name">;
+  currentPlayer?: Player;
+  onRemove?: () => void;
 }
 
-const PlayerSlot: React.FC<PlayerSlotProps> = ({ droppableId, teamColor }) => {
+const PlayerSlot: React.FC<PlayerSlotProps> = ({
+  droppableId,
+  allowedPlayer,
+  currentPlayer,
+  onRemove,
+}) => {
   return (
     <Droppable droppableId={droppableId}>
       {(provided, snapshot) => (
@@ -15,13 +24,44 @@ const PlayerSlot: React.FC<PlayerSlotProps> = ({ droppableId, teamColor }) => {
           ref={provided.innerRef}
           {...provided.droppableProps}
           className={`
-            flex items-center justify-center p-2 
-            border-2 rounded-md
-            ${snapshot.isDraggingOver ? "bg-blue-50" : "bg-gray-50"}
-            border-${teamColor}
+            flex items-center justify-between p-2 
+            border-2 border-dashed rounded-md mb-4
+            ${
+              snapshot.isDraggingOver
+                ? "bg-blue-50"
+                : currentPlayer
+                ? "bg-white"
+                : "bg-gray-50"
+            }
+            ${
+              allowedPlayer.teamId === "team1"
+                ? " border-lime-500"
+                : " border-indigo-400"
+            }
           `}
         >
-          <UserIcon className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center gap-2 flex-1">
+            {allowedPlayer.isFemale ? (
+              <FemaleIcon className="text-pink-200" />
+            ) : (
+              <MaleIcon className="text-blue-200" />
+            )}
+            {currentPlayer && (
+              <span className="text-gray-700">{currentPlayer.name}</span>
+            )}
+          </div>
+          {currentPlayer && onRemove && (
+            <button
+              onClick={onRemove}
+              className={`
+                text-2xl leading-none
+                ${allowedPlayer.teamId === "team1" ? "text-lime-500" : "text-indigo-400"}
+                hover:opacity-75
+              `}
+            >
+              ×
+            </button>
+          )}
           {provided.placeholder}
         </div>
       )}

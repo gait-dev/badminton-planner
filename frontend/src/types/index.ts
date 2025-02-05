@@ -13,14 +13,10 @@ export interface Team {
   players: Player[];
 }
 
-export interface Match {
-  type: MatchType;
-  players: Player[];
-}
-
 export interface OptimizedMatch {
   type: MatchType;
   players: Player[];
+  allowedPlayers: Omit<Player, "id" | "name">[];
   hasConflict: boolean;
   conflictReason?: string;
   court: number;
@@ -28,6 +24,6 @@ export interface OptimizedMatch {
 }
 
 export interface Rotation {
-  matches: Match[];
+  matches: OptimizedMatch[];
   startTimes: Date[];
-}
+} 

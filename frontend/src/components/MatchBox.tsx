@@ -1,75 +1,67 @@
 import React from "react";
-import { Droppable, Draggable } from "@hello-pangea/dnd";
-import { Player, MatchType } from "../types";
+import { OptimizedMatch, Player } from "../types";
+import PlayerSlot from "./PlayerSlot";
 
 interface MatchBoxProps {
-  match: {
-    type: MatchType;
-    players: Player[];
-    hasConflict: boolean;
-    conflictReason?: string;
-  };
+  match: OptimizedMatch;
   onRemovePlayer: (playerId: string) => void;
+  onUpdatePlayer: (playerId: string, updates: Partial<Player>) => void;
 }
 
-const MatchBox: React.FC<MatchBoxProps> = ({ match, onRemovePlayer }) => {
+const MatchBox: React.FC<MatchBoxProps> = ({
+  match,
+  onRemovePlayer,
+  onUpdatePlayer,
+}) => {
   return (
     <div
       className={`
-        p-4 bg-white rounded-lg shadow-sm
-        ${match.hasConflict ? "border-2 border-red-500" : "border border-gray-200"}
+        flex 
+        ${match.hasConflict ? "text-red-500" : "text-gray-700"}
       `}
     >
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-medium text-gray-700">{match.type}</h3>
-        {match.hasConflict && (
-          <div className="text-sm text-red-500">{match.conflictReason}</div>
-        )}
+      <div className="flex items-center rounded-s-lg  shadow-sm bg-gray-100">
+        <h3 className="-rotate-90 whitespace-nowrap text-lg font-medium origin-top-left translate-y-full">
+          {match.type}
+        </h3>
       </div>
 
-      <Droppable droppableId={`match-${match.type}`}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={`
-              min-h-[100px] p-2 rounded-md
-              ${snapshot.isDraggingOver ? "bg-blue-50" : "bg-gray-50"}
-              transition-colors duration-200
-            `}
-          >
-            {match.players.map((player, index) => (
-              <Draggable
-                key={player.id}
-                draggableId={`${match.type}-${player.id}`}
-                index={index}
-              >
-                {(provided) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={`
-                      flex items-center justify-between p-2 mb-2
-                      bg-white rounded border
-                      ${player.teamId === "team1" ? "border-l-4 border-l-team1" : "border-l-4 border-l-team2"}
-                    `}
-                  >
-                    <span>{player.name}</span>
-                    <button
-                      onClick={() => onRemovePlayer(player.id)}
-                      className="text-gray-400 hover:text-gray-600 px-2"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
+      <div
+        className={`
+        flex-1 p-4 bg-white rounded-e-lg shadow-sm
+        ${
+          match.hasConflict
+            ? "border-2 border-red-500"
+            : "border border-gray-200"
+        }
+      `}
+      >
+        {match.hasConflict && (
+          <div className="text-sm text-red-500 mb-2">
+            {match.conflictReason}
           </div>
         )}
-      </Droppable>
+
+        <div className="gap-2">
+          {match.allowedPlayers.map((allowedPlayer, index) => {
+            const currentPlayer = match.players[index];
+            return (
+              <PlayerSlot
+                key={`${match.type}-${allowedPlayer.teamId}-${allowedPlayer.isFemale}-${index}`}
+                droppableId={`${match.type}-${allowedPlayer.teamId}-${allowedPlayer.isFemale}-${index}`}
+                allowedPlayer={allowedPlayer}
+                currentPlayer={currentPlayer}
+                onRemove={
+                  currentPlayer
+                    ? () => onRemovePlayer(currentPlayer.id)
+                    : undefined
+                }
+                onUpdatePlayer={onUpdatePlayer}
+              />
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

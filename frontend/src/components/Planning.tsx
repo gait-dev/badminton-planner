@@ -3,6 +3,7 @@ import { OptimizedMatch } from "../types";
 
 interface PlanningProps {
   matches: OptimizedMatch[];
+  onOptimize: () => void;
 }
 
 const MATCH_DURATION = 40; // minutes
@@ -13,7 +14,7 @@ interface ScheduleSolution {
   totalDuration: number;
 }
 
-const Planning: React.FC<PlanningProps> = ({ matches }) => {
+const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
   // Fonction pour vérifier si deux matchs peuvent être joués en même temps
   const canPlaySimultaneously = (
     match1: OptimizedMatch,
@@ -259,40 +260,51 @@ const Planning: React.FC<PlanningProps> = ({ matches }) => {
     return `${hours}h${mins.toString().padStart(2, "0")}`;
   };
 
-  // Calculer le planning optimal
-  const solution = findOptimalSchedule(matches);
+  const [solution, setSolution] = React.useState<ScheduleSolution | null>(null);
+
+  React.useEffect(() => {
+    const optimalSchedule = findOptimalSchedule(matches);
+    setSolution(optimalSchedule);
+  }, [matches]);
+
+  const handleOptimize = () => {
+    const optimalSchedule = findOptimalSchedule(matches);
+    setSolution(optimalSchedule);
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Planning</h2>
-      <div className="space-y-4">
-        {solution.matches.map((match) => (
+    <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">Planning</h2>
+        <button
+          onClick={handleOptimize}
+          className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+        >
+          Optimiser l'ordre des matchs
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {solution?.matches.map((match) => (
           <div
-            key={`${match.type}-${match.court}-${match.startTime}`}
-            className="flex items-center gap-4 p-2 bg-gray-50 rounded-md"
+            key={match.type}
+            className="flex items-center justify-between p-2 border rounded-md"
           >
-            <div className="w-16">
-              <div className="text-sm font-medium text-gray-600">
-                {formatTime(match.startTime)}
-              </div>
-            </div>
-            <div className="flex-1">
-              <div className="font-medium text-gray-800">{match.type}</div>
-              <div className="text-sm text-gray-600">
-                {match.players.map((p) => p.name).join(" - ")}
-              </div>
-            </div>
-            <div className="text-sm font-medium text-gray-600">
-              Court {match.court}
+            <span>{match.type}</span>
+            <div className="flex gap-2">
+              <span>Court {match.court}</span>
+              <span>{formatTime(match.startTime)}</span>
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="text-sm text-gray-600">
-          Durée totale : {formatTime(solution.totalDuration)}
+      {solution && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
+            Durée totale : {formatTime(solution.totalDuration)}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

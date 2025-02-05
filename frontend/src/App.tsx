@@ -2,21 +2,7 @@ import { useState } from "react";
 import React from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { Team, Player, MatchType, OptimizedMatch } from "./types";
-import { TeamList, MatchBox, Planning } from "./components";
-
-interface OptimizedMatch {
-  type: MatchType;
-  players: Player[];
-  hasConflict: boolean;
-  conflictReason?: string;
-  court: number;
-  startTime: number;
-}
-
-const TEAM_COLORS = {
-  team1: "#a7c957",
-  team2: "#f4845f",
-} as const;
+import { TeamList, MatchBox, Planning, MatchManager } from "./components";
 
 function App() {
   const createDefaultPlayers = (teamId: string): Player[] => {
@@ -56,14 +42,102 @@ function App() {
   ]);
 
   const [matches, setMatches] = useState<OptimizedMatch[]>([
-    { type: "SH1", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "SH2", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "SD1", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "SD2", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "DH", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "DD", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "MX1", players: [], hasConflict: false, court: 1, startTime: 0 },
-    { type: "MX2", players: [], hasConflict: false, court: 1, startTime: 0 },
+    {
+      type: "SH1",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: false, teamId: "team1" },
+        { isFemale: false, teamId: "team2" },
+      ],
+    },
+    {
+      type: "SH2",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: false, teamId: "team1" },
+        { isFemale: false, teamId: "team2" },
+      ],
+    },
+    {
+      type: "SD1",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: true, teamId: "team1" },
+        { isFemale: true, teamId: "team2" },
+      ],
+    },
+    {
+      type: "SD2",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: true, teamId: "team1" },
+        { isFemale: true, teamId: "team2" },
+      ],
+    },
+    {
+      type: "DH",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: false, teamId: "team1" },
+        { isFemale: false, teamId: "team1" },
+        { isFemale: false, teamId: "team2" },
+        { isFemale: false, teamId: "team2" },
+      ],
+    },
+    {
+      type: "DD",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: true, teamId: "team1" },
+        { isFemale: true, teamId: "team1" },
+        { isFemale: true, teamId: "team2" },
+        { isFemale: true, teamId: "team2" },
+      ],
+    },
+    {
+      type: "MX1",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: true, teamId: "team1" },
+        { isFemale: false, teamId: "team1" },
+        { isFemale: true, teamId: "team2" },
+        { isFemale: false, teamId: "team2" },
+      ],
+    },
+    {
+      type: "MX2",
+      players: [],
+      hasConflict: false,
+      court: 1,
+      startTime: 0,
+      allowedPlayers: [
+        { isFemale: true, teamId: "team1" },
+        { isFemale: false, teamId: "team1" },
+        { isFemale: true, teamId: "team2" },
+        { isFemale: false, teamId: "team2" },
+      ],
+    },
   ]);
 
   const handleDragEnd = (result: DropResult) => {
@@ -73,72 +147,90 @@ function App() {
     // Si c'est un drag depuis une équipe vers un match
     if (source.droppableId.endsWith("-players")) {
       const teamId = source.droppableId.split("-")[0];
-      const matchType = destination.droppableId.split("-")[1] as MatchType;
       const team = teams.find((t) => t.id === teamId);
       if (!team) return;
 
       const player = team.players[source.index];
-      if (!player) return;
 
-      // Vérifier si le joueur peut être ajouté au match
-      const match = matches.find((m) => m.type === matchType);
-      if (!match) return;
+      // Parse le droppableId du match pour obtenir les contraintes
+      const [matchType, allowedTeamId, allowedIsFemale, slotIndex] =
+        destination.droppableId.split("-");
+      const isFemaleAllowed = allowedIsFemale === "true";
 
-      if (!isValidMatchComposition(matchType, player, match.players)) return;
-
-      // Ajouter le joueur au match
-      setMatches(
-        matches.map((m) =>
-          m.type === matchType ? { ...m, players: [...m.players, player] } : m
-        )
-      );
-    }
-    // Si c'est un drag entre deux matches
-    else if (destination.droppableId.startsWith("match-")) {
-      const srcMatchType = source.droppableId.split("-")[1] as MatchType;
-      const destMatchType = destination.droppableId.split("-")[1] as MatchType;
-
-      // Si même match, réorganiser les joueurs
-      if (srcMatchType === destMatchType) {
-        const match = matches.find((m) => m.type === srcMatchType);
-        if (!match) return;
-
-        const newPlayers = Array.from(match.players);
-        const [removed] = newPlayers.splice(source.index, 1);
-        newPlayers.splice(destination.index, 0, removed);
-
-        setMatches(
-          matches.map((m) =>
-            m.type === srcMatchType ? { ...m, players: newPlayers } : m
-          )
-        );
+      // Vérifie si le joueur correspond aux contraintes
+      if (
+        player.teamId !== allowedTeamId ||
+        player.isFemale !== isFemaleAllowed
+      ) {
         return;
       }
 
-      // Si match différent, vérifier la composition
-      const srcMatch = matches.find((m) => m.type === srcMatchType);
-      const destMatch = matches.find((m) => m.type === destMatchType);
-      if (!srcMatch || !destMatch) return;
+      // Trouve le match cible
+      const targetMatch = matches.find((m) => m.type === matchType);
+      if (!targetMatch) return;
 
-      const player = srcMatch.players[source.index];
-      if (!player) return;
+      // Vérifie si le slot est déjà occupé
+      if (targetMatch.players[parseInt(slotIndex)]) {
+        return;
+      }
 
-      if (!isValidMatchComposition(destMatchType, player, destMatch.players)) return;
-
+      // Met à jour les joueurs du match
       setMatches(
-        matches.map((m) => {
-          if (m.type === srcMatchType) {
+        matches.map((match) => {
+          if (match.type === matchType) {
+            const newPlayers = [...match.players];
+            newPlayers[parseInt(slotIndex)] = player;
             return {
-              ...m,
-              players: m.players.filter((_, i) => i !== source.index),
+              ...match,
+              players: newPlayers,
             };
           }
-          if (m.type === destMatchType) {
-            const newPlayers = Array.from(m.players);
-            newPlayers.splice(destination.index, 0, player);
-            return { ...m, players: newPlayers };
+          return match;
+        })
+      );
+    }
+
+    // Si c'est un drag entre matches
+    else if (destination.droppableId !== source.droppableId) {
+      const [sourceMatchType, , , sourceSlotIndex] =
+        source.droppableId.split("-");
+      const [destMatchType, allowedTeamId, allowedIsFemale, destSlotIndex] =
+        destination.droppableId.split("-");
+
+      const sourceMatch = matches.find((m) => m.type === sourceMatchType);
+      if (!sourceMatch) return;
+
+      const player = sourceMatch.players[parseInt(sourceSlotIndex)];
+      if (!player) return;
+
+      // Vérifie si le joueur correspond aux contraintes de destination
+      const isFemaleAllowed = allowedIsFemale === "true";
+      if (
+        player.teamId !== allowedTeamId ||
+        player.isFemale !== isFemaleAllowed
+      ) {
+        return;
+      }
+
+      setMatches(
+        matches.map((match) => {
+          if (match.type === sourceMatchType) {
+            const newPlayers = [...match.players];
+            newPlayers[parseInt(sourceSlotIndex)] = undefined as any;
+            return {
+              ...match,
+              players: newPlayers,
+            };
           }
-          return m;
+          if (match.type === destMatchType) {
+            const newPlayers = [...match.players];
+            newPlayers[parseInt(destSlotIndex)] = player;
+            return {
+              ...match,
+              players: newPlayers,
+            };
+          }
+          return match;
         })
       );
     }
@@ -165,16 +257,27 @@ function App() {
     );
   };
 
-  const handleUpdatePlayer = (playerId: string, updates: Partial<Player>) => {
-    setTeams(teams.map(team => ({
-      ...team,
-      players: team.players.map(player =>
-        player.id === playerId ? { ...player, ...updates } : player
-      )
-    })));
+  const handleUpdateTeam = (teamId: string, updates: Partial<Team>) => {
+    setTeams(
+      teams.map((team) => (team.id === teamId ? { ...team, ...updates } : team))
+    );
   };
 
-  const handleRemovePlayerFromMatch = (matchType: MatchType, playerId: string) => {
+  const handleUpdatePlayer = (playerId: string, updates: Partial<Player>) => {
+    setTeams(
+      teams.map((team) => ({
+        ...team,
+        players: team.players.map((player) =>
+          player.id === playerId ? { ...player, ...updates } : player
+        ),
+      }))
+    );
+  };
+
+  const handleRemovePlayerFromMatch = (
+    matchType: MatchType,
+    playerId: string
+  ) => {
     setMatches(
       matches.map((match) =>
         match.type === matchType
@@ -192,9 +295,8 @@ function App() {
     newPlayer: Player,
     currentPlayers: Player[]
   ): boolean => {
-    const maxPlayers = matchType.startsWith("D") || matchType.startsWith("MX")
-      ? 4
-      : 2;
+    const maxPlayers =
+      matchType.startsWith("D") || matchType.startsWith("MX") ? 4 : 2;
     if (currentPlayers.length >= maxPlayers) return false;
 
     const teamPlayersCount = currentPlayers.filter(
@@ -238,12 +340,13 @@ function App() {
           <div className="grid grid-cols-5 gap-5 min-h-[calc(100vh-40px)]">
             {/* Team 1 Section */}
             <div className="col-span-1">
-                <TeamList
-                  key={teams[0].id}
-                  team={teams[0]}
-                  onAddPlayer={() => handleAddPlayer(teams[0].id)}
-                  onUpdatePlayer={handleUpdatePlayer}
-                />
+              <TeamList
+                key={teams[0].id}
+                team={teams[0]}
+                onAddPlayer={() => handleAddPlayer(teams[0].id)}
+                onUpdateTeam={(id, updates) => handleUpdateTeam(id, updates)}
+                onUpdatePlayer={handleUpdatePlayer}
+              />
             </div>
 
             {/* Matches Section */}
@@ -256,6 +359,7 @@ function App() {
                     onRemovePlayer={(playerId) =>
                       handleRemovePlayerFromMatch(match.type, playerId)
                     }
+                    onUpdatePlayer={handleUpdatePlayer}
                   />
                 ))}
               </div>
@@ -263,21 +367,28 @@ function App() {
 
             {/* Team 2 Section */}
             <div className="col-span-1">
-                <TeamList
-                  key={teams[1].id}
-                  team={teams[1]}
-                  onAddPlayer={() => handleAddPlayer(teams[1].id)}
-                  onUpdatePlayer={handleUpdatePlayer}
-                />
+              <TeamList
+                key={teams[1].id}
+                team={teams[1]}
+                onAddPlayer={() => handleAddPlayer(teams[1].id)}
+                onUpdateTeam={(id, updates) => handleUpdateTeam(id, updates)}
+                onUpdatePlayer={handleUpdatePlayer}
+              />
             </div>
-
 
             {/* Schedule Section */}
             <div className="bg-white rounded-lg shadow-md p-4 col-span-1">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                Planning
-              </h2>
-              <Planning matches={matches} />
+              <MatchManager
+                matches={matches}
+                onImport={(text) => {
+                  // TODO: Implement import logic
+                  console.log("Import text:", text);
+                }}
+                onOptimize={() => {
+                  // TODO: Implement optimize logic
+                  console.log("Optimize matches");
+                }}
+              />
             </div>
           </div>
         </div>
