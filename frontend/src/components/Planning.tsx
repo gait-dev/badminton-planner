@@ -12,7 +12,7 @@ const REST_DURATION = 20; // minutes
 
 interface ScheduleSolution {
   matches: OptimizedMatch[];
-  totalDuration: number;
+  totalDuration: string;
 }
 
 const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
@@ -124,13 +124,14 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     };
 
     // Fonction pour vérifier si une solution est valide
-    const isValidSolution = (rounds: OptimizedMatch[][]): boolean => {
+    const isValidSolution = (rounds: OptimizedMatch[][]): number => {
+      let delay = 0;
       for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
         const round = rounds[roundIndex];
 
         // Vérifier qu'il n'y a pas de conflit dans le même tour
         if (round.length === 2 && !canPlayTogether(round[0], round[1])) {
-          return false;
+          return -1;
         }
 
         // Pour chaque match du tour
@@ -148,13 +149,13 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
             if (lastMatchRound !== null) {
               // Vérifier qu'il y a au moins un tour de pause
               if (roundIndex - lastMatchRound < 2) {
-                return false;
+                delay++;
               }
             }
           }
         }
       }
-      return true;
+      return delay;
     };
 
     // Fonction pour générer toutes les permutations
@@ -175,13 +176,14 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     }
 
     let permCount = 0;
-    let validCount = 0;
 
     // Tester toutes les permutations possibles
     let bestSolution: OptimizedMatch[][] | null = null;
-    let bestDuration = Infinity;
+    let bestDuration = "Solution non trouvée";
 
     console.time("Permutations");
+    let no_delay_solutions : OptimizedMatch[][][] = []
+    let delay_solutions : OptimizedMatch[][][] = []
     for (const permutation of generatePermutations(matches)) {
       permCount++;
 
@@ -196,33 +198,27 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       }
 
       // Vérifier si cette solution est valide
-      if (isValidSolution(rounds)) {
-        validCount++;
-        // Convertir les tours en planning avec temps et courts
-        const schedule: OptimizedMatch[] = [];
-        rounds.forEach((round, roundIndex) => {
-          round.forEach((match, matchIndex) => {
-            schedule.push({
-              ...match,
-              startTime: roundIndex * MATCH_DURATION,
-              court: matchIndex + 1,
-            });
-          });
-        });
+      let validity = isValidSolution(rounds);
+      
+      if (validity == 0) {
+        no_delay_solutions.push(rounds)
+        bestDuration = "Solution optimale"
+      }
+      else if(validity == 1){
+        delay_solutions.push(rounds)
+        bestDuration = "Solution avec 1 pause"
 
-        const duration = Math.max(
-          ...schedule.map((m) => m.startTime + MATCH_DURATION)
-        );
-        if (duration < bestDuration) {
-          bestDuration = duration;
-          bestSolution = rounds;
-        }
       }
     }
     console.timeEnd("Permutations");
     console.log(
-      `Testé ${permCount} permutations, trouvé ${validCount} solutions valides`
+      `Testé ${permCount} permutations, trouvé ${no_delay_solutions.length} solutions sans delai, ${delay_solutions.length} solutions avec delai`
     );
+
+    if(no_delay_solutions.length)
+      bestSolution = no_delay_solutions[0]
+    else
+      bestSolution = delay_solutions[0]
 
     if (!bestSolution) {
       throw new Error("Aucune solution valide trouvée");
@@ -294,7 +290,7 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       {solution && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-600">
-            Durée totale : {formatTime(solution.totalDuration)}
+            Durée totale : {solution.totalDuration}
           </div>
         </div>
       )}
