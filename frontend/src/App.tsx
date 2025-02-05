@@ -5,6 +5,9 @@ import { Team, Player, MatchType, OptimizedMatch } from "./types";
 import { TeamList, MatchBox, Planning, MatchManager } from "./components";
 import { parseMatchText } from "./utils/matchParser";
 
+// Ordre fixe des matchs
+const MATCH_ORDER = ["SH1", "SH2", "SD1", "SD2", "DH1", "DD1", "DX1", "DX2"];
+
 function App() {
   const createDefaultPlayers = (teamId: string): Player[] => {
     const players: Player[] = [];
@@ -88,7 +91,7 @@ function App() {
       ],
     },
     {
-      type: "DH",
+      type: "DH1",
       players: [],
       hasConflict: false,
       court: 1,
@@ -101,7 +104,7 @@ function App() {
       ],
     },
     {
-      type: "DD",
+      type: "DD1",
       players: [],
       hasConflict: false,
       court: 1,
@@ -114,7 +117,7 @@ function App() {
       ],
     },
     {
-      type: "MX1",
+      type: "DX1",
       players: [],
       hasConflict: false,
       court: 1,
@@ -127,7 +130,7 @@ function App() {
       ],
     },
     {
-      type: "MX2",
+      type: "DX2",
       players: [],
       hasConflict: false,
       court: 1,
@@ -314,12 +317,12 @@ function App() {
       case "SD1":
       case "SD2":
         return newPlayer.isFemale;
-      case "DH":
+      case "DH1":
         return !newPlayer.isFemale;
-      case "DD":
+      case "DD1":
         return newPlayer.isFemale;
-      case "MX1":
-      case "MX2": {
+      case "DX1":
+      case "DX2": {
         const teamPlayers = currentPlayers.filter(
           (p) => p.teamId === newPlayer.teamId
         );
@@ -369,12 +372,14 @@ function App() {
         players: Array.from(playersMap.values()).filter(p => p.teamId === team.id)
       })));
 
-      // Create optimized matches
-      const newMatches: OptimizedMatch[] = parsed.matches.map(match => {
+      // Create optimized matches and sort them according to MATCH_ORDER
+      const matchesMap = new Map<string, OptimizedMatch>();
+      
+      parsed.matches.forEach(match => {
         const allowedPlayers: Omit<Player, "id" | "name">[] = [];
         const matchPlayers: Player[] = [];
 
-        match.players.forEach((player, index) => {
+        match.players.forEach(player => {
           const playerId = `${player.team}-${player.name}`;
           const playerObj = playersMap.get(playerId);
 
@@ -390,13 +395,29 @@ function App() {
           }
         });
 
-        return {
+        matchesMap.set(match.type, {
           type: match.type,
           allowedPlayers,
           players: matchPlayers,
           hasConflict: false,
           conflictReason: ""
-        };
+        });
+      });
+
+      // Create new matches array in the correct order
+      const newMatches = MATCH_ORDER.map(matchType => {
+        const match = matchesMap.get(matchType);
+        if (!match) {
+          // Si le match n'existe pas dans l'import, créer un match vide
+          return {
+            type: matchType,
+            allowedPlayers: [],
+            players: [],
+            hasConflict: false,
+            conflictReason: ""
+          };
+        }
+        return match;
       });
 
       setMatches(newMatches);
