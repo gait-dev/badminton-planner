@@ -109,81 +109,51 @@ export function parseMatchText(text: string): ParsedResult {
   // Ajouter le dernier match non-mixte
   if (currentMatch) {
     if (currentMatch.type.startsWith('DX')) {
-      console.log("Adding last mixed match:", currentMatch.type);
       mixedMatches.push(currentMatch);
     } else {
       matches.push(currentMatch);
     }
   }
 
-  console.log("All mixed matches collected:", mixedMatches.map(m => m.type));
-
   // Deuxième passage : traiter les mixtes
   for (const mixedMatch of mixedMatches) {
-    // Trouver les lignes pertinentes pour ce match
     let matchLines: string[] = [];
     let foundMatch = false;
     
-    console.log('Looking for match:', mixedMatch.type);
-    
-    // Parcourir les lignes pour trouver celles qui appartiennent à ce match
     for (const line of lines) {
-      // Vérifier si la ligne commence par le type de match suivi d'un chiffre ou d'un espace
       if (line.match(new RegExp(`^${mixedMatch.type}[\\s\\d]`))) {
-        console.log('Found match line:', line);
         foundMatch = true;
         matchLines.push(line);
       } else if (foundMatch && line.match(/^(SH|SD|DH|DD|DX)\d/)) {
-        // Si on trouve un nouveau match, on arrête
-        console.log('Found next match:', line);
         break;
       } else if (foundMatch && line.includes(' - ') && !line.includes('Victoires') && !line.includes('Totaux')) {
-        console.log('Found player line:', line);
         matchLines.push(line);
       }
     }
 
-    console.log('Match lines for', mixedMatch.type, ':', matchLines);
-
     const playerNames = matchLines.flatMap(line => {
-      const matches = line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
-      console.log('Found players in line:', matches);
-      return matches;
+      return line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
     });
-
-    console.log('All players for', mixedMatch.type, ':', mixedMatch.players);
 
     playerNames.forEach((playerMatch, index) => {
       const name = playerMatch.split('-')[1].trim();
       const team = getTeamId(mixedMatch.type, index);
       
-      // Chercher si on connaît déjà le joueur
       if (knownPlayers.has(name)) {
         const knownPlayer = knownPlayers.get(name)!;
-        console.log("Player is known:", name, "from", knownPlayer.matchType);
         mixedMatch.players.push({ name, isFemale: knownPlayer.isFemale, team });
       } else {
-        console.log(name, "is not known, team:", team);
-        
-        // Chercher un partenaire dans les joueurs connus qui joue ce match
         const partner = Array.from(knownPlayers.values()).find(p => {
-          // Le partenaire doit :
-          // 1. Être dans la même équipe
-          // 2. Être dans ce match (son nom est dans playerNames)
           return p.team === team && 
                  playerNames.some(pn => pn.split('-')[1].trim() === p.name);
         });
 
         if (partner) {
-          console.log("Found partner in known players:", partner.name, "from", partner.matchType);
-          // Si on a trouvé un partenaire, on prend le sexe opposé
           const isFemale = !partner.isFemale;
           mixedMatch.players.push({ name, isFemale, team });
           knownPlayers.set(name, { name, isFemale, team, matchType: mixedMatch.type });
         } else {
-          // Si pas de partenaire connu, premier joueur = femme
           const isFemale = index % 2 === 0;
-          console.log("No partner found, using default rule:", isFemale);
           mixedMatch.players.push({ name, isFemale, team });
           knownPlayers.set(name, { name, isFemale, team, matchType: mixedMatch.type });
         }

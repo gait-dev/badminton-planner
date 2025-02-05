@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { OptimizedMatch } from "../types";
 import PlanningMatch from "./PlanningMatch";
 
@@ -76,9 +76,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
     const restTime =
       match.startTime - (playerLastMatch.startTime + MATCH_DURATION);
-    console.log(
-      `Temps de repos pour ${playerId} entre ${playerLastMatch.type} et ${match.type}: ${restTime} minutes`
-    );
 
     return restTime >= REST_DURATION;
   };
@@ -119,9 +116,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
       for (const id1 of match1PlayerIds) {
         if (match2PlayerIds.includes(id1)) {
-          console.log(
-            `Conflit entre ${match1.type} et ${match2.type}: ${id1} est dans les deux matchs`
-          );
           return false;
         }
       }
@@ -154,9 +148,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
             if (lastMatchRound !== null) {
               // Vérifier qu'il y a au moins un tour de pause
               if (roundIndex - lastMatchRound < 2) {
-                console.log(
-                  `${player.name} n'a pas assez de repos (dernier match: tour ${lastMatchRound}, actuel: ${roundIndex})`
-                );
                 return false;
               }
             }
@@ -264,15 +255,17 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
   };
 
   const [solution, setSolution] = React.useState<ScheduleSolution | null>(null);
+  const [isCalculating, setIsCalculating] = React.useState(false);
 
-  const handleOptimize = () => {
+  const handleOptimize = useCallback(async () => {
+    setIsCalculating(true);
     try {
       const optimalSchedule = findOptimalSchedule(matches);
       setSolution(optimalSchedule);
-    } catch (error) {
-      console.error("Erreur lors de l'optimisation:", error);
+    } finally {
+      setIsCalculating(false);
     }
-  };
+  }, [matches]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -281,14 +274,22 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        {solution?.matches.map((match, index) => (
-          <>
-            {index % 2 == 0 && (
-              <div className="col-span-2">Tour {Math.floor(index / 2) + 1}</div>
-            )}
-            <PlanningMatch key={match.type} match={match} />
-          </>
-        ))}
+        {isCalculating ? (
+          <div className="flex justify-center items-center p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          solution?.matches.map((match, index) => (
+            <>
+              {index % 2 == 0 && (
+                <div className="col-span-2">
+                  Tour {Math.floor(index / 2) + 1}
+                </div>
+              )}
+              <PlanningMatch key={match.type} match={match} />
+            </>
+          ))
+        )}
       </div>
       {solution && (
         <div className="mt-4 pt-4 border-t border-gray-200">
@@ -300,9 +301,10 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
       <button
         onClick={handleOptimize}
-        className="bg-sky-500 text-white mt-5 w-full px-4 py-2 rounded-md hover:bg-sky-400"
+        className="bg-sky-500 text-white mt-5 w-full px-4 py-2 rounded-md hover:bg-sky-400 disabled:bg-sky-300"
+        disabled={isCalculating}
       >
-        Ordre des matchs
+        {isCalculating ? "Calcul en cours..." : "Ordre des matchs"}
       </button>
     </div>
   );
