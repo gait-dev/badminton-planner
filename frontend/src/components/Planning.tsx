@@ -1,5 +1,6 @@
 import React from "react";
 import { OptimizedMatch } from "../types";
+import PlanningMatch from "./PlanningMatch";
 
 interface PlanningProps {
   matches: OptimizedMatch[];
@@ -234,6 +235,8 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
     if (!bestSolution) {
       throw new Error("Aucune solution valide trouvée");
+    } else {
+      console.log(bestSolution);
     }
 
     // Convertir la meilleure solution en planning final
@@ -262,14 +265,13 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
   const [solution, setSolution] = React.useState<ScheduleSolution | null>(null);
 
-  React.useEffect(() => {
-    const optimalSchedule = findOptimalSchedule(matches);
-    setSolution(optimalSchedule);
-  }, [matches]);
-
   const handleOptimize = () => {
-    const optimalSchedule = findOptimalSchedule(matches);
-    setSolution(optimalSchedule);
+    try {
+      const optimalSchedule = findOptimalSchedule(matches);
+      setSolution(optimalSchedule);
+    } catch (error) {
+      console.error("Erreur lors de l'optimisation:", error);
+    }
   };
 
   return (
@@ -278,18 +280,14 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
         <h2 className="text-lg font-semibold text-gray-800">Planning</h2>
       </div>
 
-      <div className="space-y-2">
-        {solution?.matches.map((match) => (
-          <div
-            key={match.type}
-            className="flex items-center justify-between p-2 border rounded-md"
-          >
-            <span>{match.type}</span>
-            <div className="flex gap-2">
-              <span>Court {match.court}</span>
-              <span>{formatTime(match.startTime)}</span>
-            </div>
-          </div>
+      <div className="grid grid-cols-2 gap-2">
+        {solution?.matches.map((match, index) => (
+          <>
+            {index % 2 == 0 && (
+              <div className="col-span-2">Tour {Math.floor(index / 2) + 1}</div>
+            )}
+            <PlanningMatch key={match.type} match={match} />
+          </>
         ))}
       </div>
       {solution && (

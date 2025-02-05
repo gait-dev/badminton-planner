@@ -353,7 +353,9 @@ function App() {
       // Process all matches to collect unique players
       parsed.matches.forEach((match) => {
         match.players.forEach((player) => {
-          const playerId = `${player.team}-${player.name}`;
+          // Remplacer les espaces par des tirets dans le nom pour l'ID
+          const safePlayerName = player.name.replace(/\s+/g, "-");
+          const playerId = `${player.team}-${safePlayerName}`;
 
           if (!playersMap.has(playerId)) {
             playersMap.set(playerId, {
@@ -383,8 +385,10 @@ function App() {
         const allowedPlayers: Omit<Player, "id" | "name">[] = [];
         let matchPlayers: Player[] = [];
 
-        match.players.forEach((player, index) => {
-          const playerId = `${player.team}-${player.name}`;
+        match.players.forEach((player) => {
+          // Utiliser le même format d'ID pour chercher le joueur
+          const safePlayerName = player.name.replace(/\s+/g, "-");
+          const playerId = `${player.team}-${safePlayerName}`;
           const playerObj = playersMap.get(playerId);
 
           // Add to allowed players pattern
@@ -400,15 +404,25 @@ function App() {
         });
 
         // Réorganiser les joueurs par équipe
-        if (match.type.startsWith('D')) { // Pour les doubles uniquement
-          const team1Players = matchPlayers.filter(p => p.teamId === 'team1');
-          const team2Players = matchPlayers.filter(p => p.teamId === 'team2');
+        if (match.type.startsWith("D")) {
+          // Pour les doubles uniquement
+          const team1Players = matchPlayers.filter((p) => p.teamId === "team1");
+          const team2Players = matchPlayers.filter((p) => p.teamId === "team2");
           matchPlayers = [...team1Players, ...team2Players];
 
           // Réorganiser aussi les allowedPlayers
-          const team1Allowed = allowedPlayers.filter(p => p.teamId === 'team1');
-          const team2Allowed = allowedPlayers.filter(p => p.teamId === 'team2');
-          allowedPlayers.splice(0, allowedPlayers.length, ...team1Allowed, ...team2Allowed);
+          const team1Allowed = allowedPlayers.filter(
+            (p) => p.teamId === "team1"
+          );
+          const team2Allowed = allowedPlayers.filter(
+            (p) => p.teamId === "team2"
+          );
+          allowedPlayers.splice(
+            0,
+            allowedPlayers.length,
+            ...team1Allowed,
+            ...team2Allowed
+          );
         }
 
         matchesMap.set(match.type, {
@@ -421,7 +435,7 @@ function App() {
       });
 
       // Créer les matchs dans l'ordre fixe
-      const newMatches = MATCH_ORDER.map(matchType => {
+      const newMatches = MATCH_ORDER.map((matchType) => {
         const match = matchesMap.get(matchType);
         if (!match) {
           // Si le match n'existe pas dans l'import, créer un match vide
@@ -430,7 +444,7 @@ function App() {
             allowedPlayers: [],
             players: [],
             hasConflict: false,
-            conflictReason: ""
+            conflictReason: "",
           };
         }
         return match;
