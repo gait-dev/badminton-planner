@@ -342,19 +342,33 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
             <React.Fragment key={`round-${index}`}>
               <div className="col-span-2">Tour {index + 1}</div>
 
-              {round.map((match, matchIndex) => (
-                <PlanningMatch
-                  key={`match-${match.type}-${index * 2 + matchIndex}`}
-                  match={match}
-                />
-              ))}
+              {round.map((match, matchIndex) => {
+                // Trouver les pauses qui concernent ce match
+                const matchPauses = solution.pauses.filter(
+                  (pause) =>
+                    pause.fromMatch === match.type ||
+                    pause.toMatch === match.type
+                );
+                const pausedPlayers = matchPauses.map((pause) => pause.player);
+
+                return (
+                  <PlanningMatch
+                    key={`match-${match.type}-${index * 2 + matchIndex}`}
+                    match={match}
+                    pausedPlayers={pausedPlayers}
+                  />
+                );
+              })}
             </React.Fragment>
           ))
         )}
       </div>
       {solution && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="text-sm text-gray-600">Durée totale :</div>
+          <div className="text-sm text-gray-600">
+            La meilleur solution contient {solution?.pauses.length} tours avec
+            pause
+          </div>
         </div>
       )}
 

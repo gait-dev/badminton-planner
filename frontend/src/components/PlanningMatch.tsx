@@ -3,10 +3,13 @@ import { OptimizedMatch } from "../types";
 
 interface PlanningMatchProps {
   match: OptimizedMatch;
-  pause: string[];
+  pausedPlayers: string[];
 }
 
-const PlanningMatch: React.FC<PlanningMatchProps> = ({ match }) => {
+const PlanningMatch: React.FC<PlanningMatchProps> = ({
+  match,
+  pausedPlayers,
+}) => {
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -17,15 +20,20 @@ const PlanningMatch: React.FC<PlanningMatchProps> = ({ match }) => {
   const team1Players = match.players.filter((p) => p.teamId === "team1");
   const team2Players = match.players.filter((p) => p.teamId === "team2");
 
+  // Vérifier si le match a des joueurs en pause
+  const hasPlayerInPause = match.players.some((player) =>
+    pausedPlayers.includes(player.name)
+  );
+
   return (
     <div className="relative group">
       {/* Card principale */}
-      <div
-        className={`flex col-span-1 rounded-lg shadow-sm ${
-          match.hasConflict ? "bg-red-50" : "bg-white"
-        }`}
-      >
-        <div className="flex items-center rounded-s-lg shadow-sm bg-gray-100 px-2 py-1">
+      <div className="flex col-span-1 rounded-lg shadow-sm bg-white">
+        <div
+          className={`flex items-center rounded-s-lg shadow-sm px-2 py-1 ${
+            hasPlayerInPause ? "bg-red-100" : ""
+          }`}
+        >
           <h3 className="whitespace-nowrap text-lg font-medium">
             {match.type}
           </h3>
@@ -40,7 +48,14 @@ const PlanningMatch: React.FC<PlanningMatchProps> = ({ match }) => {
             {/* Équipe 1 */}
             <div className="border-b-2 border-lime-500">
               {team1Players.map((player) => (
-                <div key={player.id} className="text-sm text-gray-600">
+                <div
+                  key={player.id}
+                  className={`${
+                    pausedPlayers.includes(player.name)
+                      ? "text-red-500 font-semibold"
+                      : ""
+                  }`}
+                >
                   {player.name}
                 </div>
               ))}
@@ -52,7 +67,14 @@ const PlanningMatch: React.FC<PlanningMatchProps> = ({ match }) => {
             {/* Équipe 2 */}
             <div className="border-b-2 border-indigo-400">
               {team2Players.map((player) => (
-                <div key={player.id} className="text-sm text-gray-600">
+                <div
+                  key={player.id}
+                  className={`${
+                    pausedPlayers.includes(player.name)
+                      ? "text-red-500 font-semibold"
+                      : ""
+                  }`}
+                >
                   {player.name}
                 </div>
               ))}
