@@ -88,7 +88,12 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
   const findOptimalSchedule = (
     matches: OptimizedMatch[]
-  ): SolutionWithPauses => {
+  ): {
+    solutions: {
+      [score: number]: { [firstMatch: string]: SolutionWithPauses[] };
+    };
+    bestSolution: SolutionWithPauses;
+  } => {
     // Fonction pour obtenir l'ID unique d'un joueur (type de match + équipe + numéro)
     const getPlayerId = (player: { id: string }): string => {
       const [matchType, team, num] = player.id.split("-");
@@ -299,7 +304,10 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       );
 
       const firstMatchType = Object.keys(solutions[bestScore])[0];
-      return solutions[bestScore][firstMatchType][0];
+      return {
+        solutions,
+        bestSolution: solutions[bestScore][firstMatchType][0],
+      };
     }
 
     throw new Error("Aucune solution valide trouvée");
@@ -315,16 +323,38 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     null
   );
   const [isCalculating, setIsCalculating] = React.useState(false);
+  const [allSolutions, setAllSolutions] = React.useState<{
+    [score: number]: { [firstMatch: string]: SolutionWithPauses[] };
+  } | null>(null);
+  const [selectedFirstMatch, setSelectedFirstMatch] =
+    React.useState<string>("");
 
   const handleOptimize = useCallback(async () => {
     setIsCalculating(true);
     try {
-      const optimalSchedule = findOptimalSchedule(matches);
-      setSolution(optimalSchedule);
+      const { solutions: newSolutions, bestSolution } =
+        findOptimalSchedule(matches);
+      setAllSolutions(newSolutions);
+      const bestScore = Math.min(...Object.keys(newSolutions).map(Number));
+      const firstMatchType = Object.keys(newSolutions[bestScore])[0];
+      setSelectedFirstMatch(firstMatchType);
+      setSolution(bestSolution);
     } finally {
       setIsCalculating(false);
     }
   }, [matches]);
+
+  // Gérer le changement de premier match
+  const handleFirstMatchChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const newFirstMatch = event.target.value;
+    setSelectedFirstMatch(newFirstMatch);
+    if (allSolutions) {
+      const bestScore = Math.min(...Object.keys(allSolutions).map(Number));
+      setSolution(allSolutions[bestScore][newFirstMatch][0]);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -374,11 +404,34 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
       <button
         onClick={handleOptimize}
-        className="bg-sky-500 text-white mt-5 w-full px-4 py-2 rounded-md hover:bg-sky-400 disabled:bg-sky-300"
+        className="bg-sky-500 text-white w-full px-4 py-2 rounded-md hover:bg-sky-400 disabled:bg-sky-300"
         disabled={isCalculating}
       >
         {isCalculating ? "Calcul en cours..." : "Ordre des matchs"}
       </button>
+      {allSolutions && (
+        <>
+          <label
+            className="block text-sm font-medium text-gray-700 mt-5 "
+            htmlFor=""
+          >
+            Choisissez le premier match
+          </label>
+          <select
+            value={selectedFirstMatch}
+            onChange={handleFirstMatchChange}
+            className="mt-4 w-full p-2 rounded-md border border-gray-300"
+          >
+            {Object.keys(
+              allSolutions[Math.min(...Object.keys(allSolutions).map(Number))]
+            ).map((firstMatch) => (
+              <option key={firstMatch} value={firstMatch}>
+                {firstMatch}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
     </div>
   );
 };
