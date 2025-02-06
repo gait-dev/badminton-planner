@@ -182,43 +182,72 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     let bestDuration = "Solution non trouvée";
 
     console.time("Permutations");
-    let no_delay_solutions : OptimizedMatch[][][] = []
-    let delay_solutions : OptimizedMatch[][][] = []
+    // Un seul dictionnaire avec le score comme clé
+    let solutions: {
+      [score: number]: { [firstMatch: string]: OptimizedMatch[][] };
+    } = {};
+
     for (const permutation of generatePermutations(matches)) {
       permCount++;
 
-      // Diviser la permutation en tours
+      // Diviser en tours de 2 matchs maximum
       const rounds: OptimizedMatch[][] = [];
       for (let i = 0; i < permutation.length; i += 2) {
-        const round: OptimizedMatch[] = [permutation[i]];
-        if (i + 1 < permutation.length) {
-          round.push(permutation[i + 1]);
-        }
+        const round = permutation.slice(i, i + 2);
         rounds.push(round);
       }
 
       // Vérifier si cette solution est valide
       let validity = isValidSolution(rounds);
-      
-      if (validity == 0) {
-        no_delay_solutions.push(rounds)
-        bestDuration = "Solution optimale"
-      }
-      else if(validity == 1){
-        delay_solutions.push(rounds)
-        bestDuration = "Solution avec 1 pause"
 
+      // Ne stocker que les solutions avec un score positif ou nul
+      if (validity >= 0) {
+        // Utiliser le type du premier match comme clé secondaire
+        const firstMatchType = rounds[0][0].type;
+
+        // Initialiser les structures si nécessaire
+        if (!solutions[validity]) {
+          solutions[validity] = {};
+        }
+        if (!solutions[validity][firstMatchType]) {
+          solutions[validity][firstMatchType] = [];
+        }
+
+        // Ajouter la solution
+        solutions[validity][firstMatchType].push(rounds);
       }
     }
     console.timeEnd("Permutations");
-    console.log(
-      `Testé ${permCount} permutations, trouvé ${no_delay_solutions.length} solutions sans delai, ${delay_solutions.length} solutions avec delai`
-    );
 
-    if(no_delay_solutions.length)
-      bestSolution = no_delay_solutions[0]
-    else
-      bestSolution = delay_solutions[0]
+    // Compter le nombre total de solutions par score
+    const solutionCounts = Object.entries(solutions)
+      .map(([score, solutions]) => {
+        const count = Object.values(solutions).reduce(
+          (acc, sols) => acc + sols.length,
+          0
+        );
+        return `${count} solution${count > 1 ? "s" : ""} avec ${score} pause${
+          score !== "1" ? "s" : ""
+        }`;
+      })
+      .join(", ");
+
+    console.log(`Testé ${permCount} permutations, trouvé ${solutionCounts}`);
+
+    // Prendre la meilleure solution disponible (score le plus bas)
+    const scores = Object.keys(solutions)
+      .map(Number)
+      .sort((a, b) => a - b);
+    if (scores.length > 0) {
+      const bestScore = scores[0];
+      const firstMatchType = Object.keys(solutions[bestScore])[0];
+      bestSolution = solutions[bestScore][firstMatchType][0];
+      if (bestScore === 0) {
+        bestDuration = "Solution optimale";
+      } else {
+        bestDuration = `Solution avec ${bestScore} pause(s)`;
+      }
+    }
 
     if (!bestSolution) {
       throw new Error("Aucune solution valide trouvée");
