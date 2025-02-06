@@ -3,6 +3,7 @@ import { OptimizedMatch } from "../types";
 
 interface PlanningMatchProps {
   match: OptimizedMatch;
+  pause: string[];
 }
 
 const PlanningMatch: React.FC<PlanningMatchProps> = ({ match }) => {

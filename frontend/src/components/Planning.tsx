@@ -10,9 +10,15 @@ interface PlanningProps {
 const MATCH_DURATION = 40; // minutes
 const REST_DURATION = 20; // minutes
 
-interface ScheduleSolution {
-  matches: OptimizedMatch[];
-  totalDuration: string;
+interface SolutionWithPauses {
+  rounds: OptimizedMatch[][];
+  pauses: Array<{
+    player: string;
+    fromMatch: string;
+    toMatch: string;
+    roundFrom: number;
+    roundTo: number;
+  }>;
 }
 
 const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
@@ -80,7 +86,9 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     return restTime >= REST_DURATION;
   };
 
-  const findOptimalSchedule = (matches: OptimizedMatch[]): ScheduleSolution => {
+  const findOptimalSchedule = (
+    matches: OptimizedMatch[]
+  ): SolutionWithPauses => {
     // Fonction pour obtenir l'ID unique d'un joueur (type de match + équipe + numéro)
     const getPlayerId = (player: { id: string }): string => {
       const [matchType, team, num] = player.id.split("-");
@@ -178,14 +186,39 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     let permCount = 0;
 
     // Tester toutes les permutations possibles
-    let bestSolution: OptimizedMatch[][] | null = null;
-    let bestDuration = "Solution non trouvée";
-
-    console.time("Permutations");
-    // Un seul dictionnaire avec le score comme clé
     let solutions: {
-      [score: number]: { [firstMatch: string]: OptimizedMatch[][] };
+      [score: number]: { [firstMatch: string]: SolutionWithPauses[] };
     } = {};
+
+    // Fonction pour trouver les pauses nécessaires dans une solution
+    const findRequiredPauses = (rounds: OptimizedMatch[][]) => {
+      const pauses: SolutionWithPauses["pauses"] = [];
+      const playerLastMatch: {
+        [playerId: string]: { round: number; match: OptimizedMatch };
+      } = {};
+
+      rounds.forEach((round, roundIndex) => {
+        round.forEach((match) => {
+          match.players.forEach((player) => {
+            const playerId = `${player.name}-${player.teamId}`;
+            if (playerLastMatch[playerId]) {
+              const lastMatch = playerLastMatch[playerId];
+              if (roundIndex - lastMatch.round < 2) {
+                pauses.push({
+                  player: player.name,
+                  fromMatch: lastMatch.match.type,
+                  toMatch: match.type,
+                  roundFrom: lastMatch.round,
+                  roundTo: roundIndex,
+                });
+              }
+            }
+            playerLastMatch[playerId] = { round: roundIndex, match };
+          });
+        });
+      });
+      return pauses;
+    };
 
     for (const permutation of generatePermutations(matches)) {
       permCount++;
@@ -202,7 +235,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
 
       // Ne stocker que les solutions avec un score positif ou nul
       if (validity >= 0) {
-        // Utiliser le type du premier match comme clé secondaire
         const firstMatchType = rounds[0][0].type;
 
         // Initialiser les structures si nécessaire
@@ -213,8 +245,11 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
           solutions[validity][firstMatchType] = [];
         }
 
-        // Ajouter la solution
-        solutions[validity][firstMatchType].push(rounds);
+        // Ajouter la solution avec ses pauses
+        solutions[validity][firstMatchType].push({
+          rounds,
+          pauses: findRequiredPauses(rounds),
+        });
       }
     }
     console.timeEnd("Permutations");
@@ -240,37 +275,34 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       .sort((a, b) => a - b);
     if (scores.length > 0) {
       const bestScore = scores[0];
+      console.log(`Meilleures solutions (score ${bestScore}):`);
+
+      Object.entries(solutions[bestScore]).forEach(
+        ([matchType, matchSolutions]) => {
+          console.log(
+            `  ${matchType}: ${matchSolutions.length} solution${
+              matchSolutions.length > 1 ? "s" : ""
+            }`
+          );
+          // Afficher les pauses pour la première solution de ce type
+          if (matchSolutions.length > 0) {
+            console.log("  Pauses nécessaires:");
+            matchSolutions[0].pauses.forEach((pause) => {
+              console.log(
+                `    ${pause.player}: entre ${pause.fromMatch} (tour ${
+                  pause.roundFrom + 1
+                }) et ${pause.toMatch} (tour ${pause.roundTo + 1})`
+              );
+            });
+          }
+        }
+      );
+
       const firstMatchType = Object.keys(solutions[bestScore])[0];
-      bestSolution = solutions[bestScore][firstMatchType][0];
-      if (bestScore === 0) {
-        bestDuration = "Solution optimale";
-      } else {
-        bestDuration = `Solution avec ${bestScore} pause(s)`;
-      }
+      return solutions[bestScore][firstMatchType][0];
     }
 
-    if (!bestSolution) {
-      throw new Error("Aucune solution valide trouvée");
-    } else {
-      console.log(bestSolution);
-    }
-
-    // Convertir la meilleure solution en planning final
-    const finalSchedule: OptimizedMatch[] = [];
-    bestSolution.forEach((round, roundIndex) => {
-      round.forEach((match, matchIndex) => {
-        finalSchedule.push({
-          ...match,
-          startTime: roundIndex * MATCH_DURATION,
-          court: matchIndex + 1,
-        });
-      });
-    });
-
-    return {
-      matches: finalSchedule,
-      totalDuration: bestDuration,
-    };
+    throw new Error("Aucune solution valide trouvée");
   };
 
   const formatTime = (minutes: number): string => {
@@ -279,7 +311,9 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     return `${hours}h${mins.toString().padStart(2, "0")}`;
   };
 
-  const [solution, setSolution] = React.useState<ScheduleSolution | null>(null);
+  const [solution, setSolution] = React.useState<SolutionWithPauses | null>(
+    null
+  );
   const [isCalculating, setIsCalculating] = React.useState(false);
 
   const handleOptimize = useCallback(async () => {
@@ -304,23 +338,23 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          solution?.matches.map((match, index) => (
-            <>
-              {index % 2 == 0 && (
-                <div className="col-span-2">
-                  Tour {Math.floor(index / 2) + 1}
-                </div>
-              )}
-              <PlanningMatch key={match.type} match={match} />
-            </>
+          solution?.rounds.map((round, index) => (
+            <React.Fragment key={`round-${index}`}>
+              <div className="col-span-2">Tour {index + 1}</div>
+
+              {round.map((match, matchIndex) => (
+                <PlanningMatch
+                  key={`match-${match.type}-${index * 2 + matchIndex}`}
+                  match={match}
+                />
+              ))}
+            </React.Fragment>
           ))
         )}
       </div>
       {solution && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="text-sm text-gray-600">
-            Durée totale : {solution.totalDuration}
-          </div>
+          <div className="text-sm text-gray-600">Durée totale :</div>
         </div>
       )}
 
