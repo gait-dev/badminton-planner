@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+@theme {
+    --color-aptbc-black: #23262b;
+    --color-aptbc-green : #89ab42;
+  }

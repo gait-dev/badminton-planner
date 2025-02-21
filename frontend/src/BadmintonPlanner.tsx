@@ -8,7 +8,7 @@ import { parseMatchText } from "./utils/matchParser";
 // Ordre fixe des matchs
 const MATCH_ORDER = ["SH1", "SH2", "SD1", "SD2", "DH1", "DD1", "DX1", "DX2"];
 
-function App() {
+function BadmintonPlanner() {
   const createDefaultPlayers = (teamId: string): Player[] => {
     const players: Player[] = [];
     // Create 4 male players
@@ -517,4 +517,4 @@ function App() {
   );
 }
 
-export default App;
+export default BadmintonPlanner;
