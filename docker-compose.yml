@@ -5,10 +5,6 @@ services:
     build: ./frontend
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      - /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
-      - /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
     depends_on:
       - backend
     restart: always
