@@ -36,14 +36,22 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
   }
 }
 
-router.post('/', limiter, async (req, res) => {
+interface ContactRequest {
+  name: string;
+  email: string;
+  message: string;
+  recaptchaToken: string;
+}
+
+router.post('/', limiter, async (req: express.Request<{}, {}, ContactRequest>, res: express.Response): Promise<void> => {
   try {
     const { name, email, message, recaptchaToken } = req.body;
 
     // Vérifier le token reCAPTCHA
     const isValidRecaptcha = await verifyRecaptcha(recaptchaToken);
     if (!isValidRecaptcha) {
-      return res.status(400).json({ error: 'Validation reCAPTCHA échouée' });
+      res.status(400).json({ error: 'Validation reCAPTCHA échouée' });
+      return;
     }
 
     // Envoyer l'email

@@ -4,6 +4,13 @@ module.exports = {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  plugins: [
-  ],
+  theme: {
+    extend: {
+      colors: {
+        'aptbc-green': '#4CAF50',
+        'aptbc-black': '#333333',
+      },
+    },
+  },
+  plugins: [],
 }
