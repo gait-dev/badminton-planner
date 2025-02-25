@@ -112,57 +112,38 @@ function extractDoubleMatch(line: string): ParsedMatch | null {
 
 export function parseMatchText(text: string): ParsedResult {
   const lines = cleanMatchText(text);
-  console.log("\n=== Test de cleanMatchText ===");
-  console.log("Nombre de lignes après nettoyage:", lines.length);
-  console.log("\nLignes conservées:");
-  lines.forEach((line, index) => {
-    console.log(`${index + 1}: ${line}`);
-  });
-
-  // Chercher les équipes dans chaque ligne
-  console.log("\n=== Test de extractTeams ===");
   let result: ParsedResult = {
     team1: "",
     team2: "",
     matches: []
   };
 
+  // Chercher les équipes dans chaque ligne
   for (let i = 0; i < lines.length; i++) {
     const teams = extractTeams(lines[i]);
     if (teams) {
-      console.log(`\nÉquipes trouvées ligne ${i + 1}:`);
-      console.log("Texte:", lines[i]);
-      console.log("Équipes:", teams);
-      
-      // On a trouvé les équipes, on les enregistre et on arrête la recherche
       result = { ...teams, matches: [] };
       break;
     }
   }
 
+  console.log("Matches:",result);
+
   // Chercher les matchs dans chaque ligne
-  console.log("\n=== Test de extractMatch ===");
   for (let i = 0; i < lines.length; i++) {
+    console.log("testing line:", lines[i]);
     const singleMatch = extractSingleMatch(lines[i]);
     if (singleMatch) {
-      console.log(`\nMatch simple trouvé ligne ${i + 1}:`);
-      console.log("Texte:", lines[i]);
-      console.log("Match:", singleMatch);
-      
-      // On a trouvé un match simple, on l'ajoute à la liste des matchs
+      console.log("Found single match:", singleMatch);
       result.matches.push(singleMatch);
     } else {
       const doubleMatch = extractDoubleMatch(lines[i]);
+      console.log("testing double match:", doubleMatch);
       if (doubleMatch) {
-        console.log(`\nMatch double trouvé ligne ${i + 1}:`);
-        console.log("Texte:", lines[i]);
-        console.log("Match:", doubleMatch);
-        
-        // On a trouvé un match double, on l'ajoute à la liste des matchs
         result.matches.push(doubleMatch);
       }
     }
   }
-  console.log(result)
+
   return result;
 }

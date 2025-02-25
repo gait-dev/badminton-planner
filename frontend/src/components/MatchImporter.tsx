@@ -10,11 +10,10 @@ const MatchImporter: React.FC<MatchImporterProps> = ({ onImport }) => {
 
   const handleImport = () => {
     try {
-      const matches = parseMatchText(text);
-      console.log("Parsed matches:", matches);
+      parseMatchText(text);
       onImport(text);
     } catch (error) {
-      console.error("Error parsing matches:", error);
+      // Gérer l'erreur silencieusement
     }
   };
 

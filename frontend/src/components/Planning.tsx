@@ -81,9 +81,7 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
   }
 
   const testPermutations = () => {
-    console.time('Permutations');
     const allPermutations = generateAllPermutations(matches);
-    console.timeEnd('Permutations');
     
     // Analyser les pauses pour chaque permutation
     const permutationsWithPauses = allPermutations.map(perm => ({
@@ -94,10 +92,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
     // Filtrer les solutions valides (pauses < 99)
     const validSolutions = permutationsWithPauses.filter(sol => sol.pauses < 99);
     
-    console.log(`Nombre total de permutations: ${allPermutations.length}`);
-    console.log(`Nombre de solutions valides: ${validSolutions.length}`);
-    console.log('Solutions valides par nombre de pauses:');
-    
     // Grouper les solutions par nombre de pauses
     const solutionsByPauses: { [key: number]: typeof validSolutions } = {};
     validSolutions.forEach(sol => {
@@ -106,14 +100,6 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       }
       solutionsByPauses[sol.pauses].push(sol);
     });
-    
-    // Afficher chaque groupe de solutions
-    Object.entries(solutionsByPauses)
-      .sort(([a], [b]) => Number(a) - Number(b)) // Trier par nombre de pauses
-      .forEach(([pauses, solutions]) => {
-        console.log(`\n=== Solutions avec ${pauses} pause(s) (${solutions.length} solutions)`);
-        console.log(solutions)
-      });
 
     return validSolutions;
   }
