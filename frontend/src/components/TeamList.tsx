@@ -30,7 +30,12 @@ const TeamList: React.FC<TeamListProps> = ({ team, onAddPlayer, onUpdateTeam, on
             className="space-y-2"
           >
             {team.players.map((player, index) => (
-              <PlayerCard player={player} index={index} onUpdatePlayer={onUpdatePlayer}></PlayerCard>
+              <PlayerCard 
+                key={player.id} 
+                player={player} 
+                index={index} 
+                onUpdatePlayer={onUpdatePlayer}
+              />
             ))}
             {provided.placeholder}
           </div>

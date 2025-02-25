@@ -56,34 +56,34 @@ export default function Home() {
                         <tr>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold">Lycée</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold">Adultes</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green  rounded-sm text-xs font-semibold">Jeunes </span>
+                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Jeunes</span>
                             </div>
                           </td>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="px-4 py-1 text-white bg-violet-500 rounded-sm text-xs font-semibold">Guigou</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold">Adultes</span>
+                              <span className="w-24 px-4 py-1 text-white bg-violet-500 rounded-sm text-xs font-semibold text-center">Guigou</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
                             </div>
                           </td>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold">Lycée</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green  rounded-sm text-xs font-semibold">Jeunes</span>
+                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Jeunes</span>
                             </div>
                           </td>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold">Lycée</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green  rounded-sm text-xs font-semibold">Adultes</span>
+                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
                             </div>
                           </td>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold">Lycée</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green  rounded-sm text-xs font-semibold">Adultes</span>
-                              <span className="px-4 py-1 text-white bg-aptbc-green  rounded-sm text-xs font-semibold">Jeunes</span>
+                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
+                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Jeunes</span>
                             </div>
                           </td>
                         </tr>
@@ -120,7 +120,7 @@ export default function Home() {
                   <GoogleMap
                     mapContainerStyle={containerStyle}
                     center={center}
-                    zoom={15}
+                    zoom={20}
                   />
                 </LoadScript>
                 <p className="mt-2 text-sm text-white">104 Place Charles de Gaulle, 84400 Apt</p>

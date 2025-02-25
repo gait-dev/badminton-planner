@@ -32,8 +32,52 @@ function getTeamId(matchType: string, playerIndex: number): string {
   return playerIndex === 0 ? "team1" : "team2";
 }
 
-export function parseMatchText(text: string): ParsedResult {
+function cleanMatchText(text: string): string[] {
   const lines = text.split('\n').filter(line => line.trim());
+  let startIndex = -1;
+  let endIndex = -1;
+
+  // Trouver le début des données pertinentes (après "Dis. Ord. Ter.")
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('Dis. Ord. Ter.')) {
+      startIndex = i;
+      break;
+    }
+  }
+
+  // Trouver la fin des données pertinentes (avant "Capitaines" ou "Bonus" ou "Powered by")
+  for (let i = startIndex + 1; i < lines.length; i++) {
+    if (lines[i].includes('Capitaines') || 
+        lines[i].includes('Bonus') || 
+        lines[i].includes('Powered by') ||
+        lines[i].includes('Remarques')) {
+      endIndex = i;
+      break;
+    }
+  }
+
+  // Si on n'a pas trouvé de fin explicite, prendre la dernière ligne avec "Totaux"
+  if (endIndex === -1) {
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lines[i].includes('Totaux')) {
+        endIndex = i + 1;
+        break;
+      }
+    }
+  }
+
+  // Si on a trouvé un début mais pas de fin, prendre jusqu'à la fin
+  if (startIndex !== -1 && endIndex === -1) {
+    endIndex = lines.length;
+  }
+
+  // Retourner les lignes pertinentes
+  return startIndex !== -1 ? lines.slice(startIndex, endIndex) : lines;
+}
+
+export function parseMatchText(text: string): ParsedResult {
+  // Pré-traiter le texte pour ne garder que les lignes pertinentes
+  const lines = cleanMatchText(text);
   const matches: ParsedMatch[] = [];
   const mixedMatches: ParsedMatch[] = [];
   let currentMatch: ParsedMatch | null = null;
@@ -120,45 +164,67 @@ export function parseMatchText(text: string): ParsedResult {
     let matchLines: string[] = [];
     let foundMatch = false;
     
+    console.log('=== Traitement du match mixte ===', mixedMatch.type);
+    
+    // Collecter toutes les lignes pertinentes pour ce match mixte
     for (const line of lines) {
-      if (line.match(new RegExp(`^${mixedMatch.type}[\\s\\d]`))) {
+      console.log('Analyse ligne:', line);
+      console.log('Regex testée:', new RegExp(`^${mixedMatch.type}(?:[\\s\\d]|$)`));
+      
+      if (line.match(new RegExp(`^${mixedMatch.type}(?:[\\s\\d]|$)`))) {
+        console.log('✅ Ligne de début de match trouvée:', line);
         foundMatch = true;
         matchLines.push(line);
-      } else if (foundMatch && line.match(/^(SH|SD|DH|DD|DX)\d/)) {
-        break;
-      } else if (foundMatch && line.includes(' - ') && !line.includes('Victoires') && !line.includes('Totaux')) {
-        matchLines.push(line);
+      } else if (foundMatch) {
+        console.log('Dans le match, analyse de:', line);
+        if (line.match(/^(SH|SD|DH|DD|DX)\d/)) {
+          console.log('❌ Fin du match trouvée:', line);
+          break;
+        } else if (!line.includes('Victoires') && !line.includes('Totaux')) {
+          if (line.match(/\d{8}\s*-\s*[^(]+/)) {
+            console.log('✅ Ligne de joueur trouvée:', line);
+            matchLines.push(line);
+          }
+        }
       }
     }
 
+    console.log('Lignes collectées pour', mixedMatch.type, ':', matchLines);
+
+    // Extraire tous les joueurs
     const playerNames = matchLines.flatMap(line => {
-      return line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
+      const matches = line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
+      const names = matches.map(m => m.split('-')[1].trim());
+      console.log('Joueurs trouvés dans la ligne:', names);
+      return names;
     });
 
-    playerNames.forEach((playerMatch, index) => {
-      const name = playerMatch.split('-')[1].trim();
+    console.log('Tous les joueurs trouvés:', playerNames);
+
+    // Traiter chaque joueur
+    playerNames.forEach((name, index) => {
       const team = getTeamId(mixedMatch.type, index);
+      const knownPlayer = knownPlayers.get(name);
       
-      if (knownPlayers.has(name)) {
-        const knownPlayer = knownPlayers.get(name)!;
+      console.log('Traitement du joueur:', {
+        name,
+        index,
+        team,
+        isKnown: !!knownPlayer,
+        knownInfo: knownPlayer
+      });
+
+      if (knownPlayer) {
         mixedMatch.players.push({ name, isFemale: knownPlayer.isFemale, team });
       } else {
-        const partner = Array.from(knownPlayers.values()).find(p => {
-          return p.team === team && 
-                 playerNames.some(pn => pn.split('-')[1].trim() === p.name);
-        });
-
-        if (partner) {
-          const isFemale = !partner.isFemale;
-          mixedMatch.players.push({ name, isFemale, team });
-          knownPlayers.set(name, { name, isFemale, team, matchType: mixedMatch.type });
-        } else {
-          const isFemale = index % 2 === 0;
-          mixedMatch.players.push({ name, isFemale, team });
-          knownPlayers.set(name, { name, isFemale, team, matchType: mixedMatch.type });
-        }
+        const isFemale = name.match(/[eéèêë]\s*$/i) !== null;
+        console.log('Genre déterminé par le nom:', { name, isFemale });
+        mixedMatch.players.push({ name, isFemale, team });
+        knownPlayers.set(name, { name, isFemale, team, matchType: mixedMatch.type });
       }
     });
+
+    console.log('Joueurs finaux du match:', mixedMatch.players);
   }
 
   // Ajouter les mixtes à la fin
