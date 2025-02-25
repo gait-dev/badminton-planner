@@ -15,247 +15,154 @@ interface ParsedResult {
   matches: ParsedMatch[];
 }
 
-interface TempPlayer {
-  name: string;
-  isFemale: boolean;
-  team: string;
-  matchType: string;
-}
-
-function getTeamId(matchType: string, playerIndex: number): string {
-  // Pour les matchs à 4 joueurs (DH, DD, DX)
-  if (matchType.startsWith('D')) {
-    // Joueur 1 et 3 -> team1, Joueur 2 et 4 -> team2
-    return playerIndex % 2 === 0 ? "team1" : "team2";
-  }
-  // Pour les matchs à 2 joueurs (SH, SD)
-  return playerIndex === 0 ? "team1" : "team2";
-}
-
 function cleanMatchText(text: string): string[] {
-  const lines = text.split('\n').filter(line => line.trim());
-  let startIndex = -1;
-  let endIndex = -1;
+  // 1. Supprimer tous les espaces en début de ligne et lignes vides
+  const lines = text.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
 
-  // Trouver le début des données pertinentes (après "Dis. Ord. Ter.")
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('Dis. Ord. Ter.')) {
-      startIndex = i;
-      break;
+  // 2. Joindre toutes les lignes en une seule chaîne
+  let fullText = lines.join(' ');
+
+  // 3. Ajouter des retours à la ligne devant les types de match
+  fullText = fullText.replace(/(SH1|SH2|SD1|SD2|DX1|DX2|DD1|DH1)/g, '\n$1');
+
+  // 4. Découper à nouveau en lignes et nettoyer
+  return fullText.split('\n');
+}
+
+function extractTeams(line: string): Omit<ParsedResult, 'matches'> | null {
+  // Regexp pour détecter "2 chiffres-3 lettres-2 chiffres"
+  const teamRegex = /(\d{2}-[A-Z]{2,10}-\d{1,2})/g;
+  const matches = line.match(teamRegex);
+  
+  if (matches && matches.length >= 2) {
+    return {
+      team1: matches[0],
+      team2: matches[1]
+    };
+  }
+  return null;
+}
+
+function extractPlayer(text: string): Omit<ParsedPlayer, 'isFemale' | 'team'> | null {
+  const playerRegex = /(\d{8})\s+-\s+([^(]+)\s*\(([^)]+)\)/;
+  const match = text.match(playerRegex);
+  
+  if (match) {
+    const [_, license, name, category] = match;
+    return {
+      name: name.trim()
+    };
+  }
+  return null;
+}
+
+function extractSingleMatch(line: string): ParsedMatch | null {
+  // Regexp pour détecter un match simple et ses deux joueurs
+  const singleMatchRegex = /^(SH[12]|SD[12]).*?(\d{8}\s+-\s+[^(]+\s*\([^)]+\)).*?(\d{8}\s+-\s+[^(]+\s*\([^)]+\))/;
+  const match = line.match(singleMatchRegex);
+  
+  if (match) {
+    const [_, type, player1Text, player2Text] = match;
+    const player1 = extractPlayer(player1Text);
+    const player2 = extractPlayer(player2Text);
+    
+    if (player1 && player2) {
+      return {
+        type,
+        players: [
+          { ...player1, team: "team1", isFemale: type.startsWith('SD') },
+          { ...player2, team: "team2", isFemale: type.startsWith('SD') }
+        ]
+      };
     }
   }
+  return null;
+}
 
-  // Trouver la fin des données pertinentes (avant "Capitaines" ou "Bonus" ou "Powered by")
-  for (let i = startIndex + 1; i < lines.length; i++) {
-    if (lines[i].includes('Capitaines') || 
-        lines[i].includes('Bonus') || 
-        lines[i].includes('Powered by') ||
-        lines[i].includes('Remarques')) {
-      endIndex = i;
-      break;
+function extractDoubleMatch(line: string): ParsedMatch | null {
+  // Regexp pour détecter un match double et ses quatre joueurs
+  const doubleMatchRegex = /^(DH1|DD1|DX[12]).*?(\d{8}\s+-\s+[^(]+\s*\([^)]+\)).*?(\d{8}\s+-\s+[^(]+\s*\([^)]+\)).*?(\d{8}\s+-\s+[^(]+\s*\([^)]+\)).*?(\d{8}\s+-\s+[^(]+\s*\([^)]+\))/;
+  const match = line.match(doubleMatchRegex);
+  
+  if (match) {
+    const [_, type, player1Text, player2Text, player3Text, player4Text] = match;
+    const player1 = extractPlayer(player1Text);
+    const player2 = extractPlayer(player2Text);
+    const player3 = extractPlayer(player3Text);
+    const player4 = extractPlayer(player4Text);
+    
+    if (player1 && player2 && player3 && player4) {
+      const isFemale = type.startsWith('DD');
+      const isMixed = type.startsWith('DX');
+      return {
+        type,
+        players: [
+          { ...player1, team: "team1", isFemale: isFemale || (isMixed && true) },
+          { ...player3, team: "team1", isFemale: isFemale || (isMixed && false) },
+          { ...player2, team: "team2", isFemale: isFemale || (isMixed && true) },
+          { ...player4, team: "team2", isFemale: isFemale || (isMixed && false) }
+        ]
+      };
     }
   }
-
-  // Si on n'a pas trouvé de fin explicite, prendre la dernière ligne avec "Totaux"
-  if (endIndex === -1) {
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].includes('Totaux')) {
-        endIndex = i + 1;
-        break;
-      }
-    }
-  }
-
-  // Si on a trouvé un début mais pas de fin, prendre jusqu'à la fin
-  if (startIndex !== -1 && endIndex === -1) {
-    endIndex = lines.length;
-  }
-
-  // Retourner les lignes pertinentes
-  return startIndex !== -1 ? lines.slice(startIndex, endIndex) : lines;
+  return null;
 }
 
 export function parseMatchText(text: string): ParsedResult {
-  // Pré-traiter le texte pour ne garder que les lignes pertinentes
   const lines = cleanMatchText(text);
-  const matches: ParsedMatch[] = [];
-  const mixedMatches: ParsedMatch[] = [];
-  let currentMatch: ParsedMatch | null = null;
-  let team1 = "";
-  let team2 = "";
+  console.log("\n=== Test de cleanMatchText ===");
+  console.log("Nombre de lignes après nettoyage:", lines.length);
+  console.log("\nLignes conservées:");
+  lines.forEach((line, index) => {
+    console.log(`${index + 1}: ${line}`);
+  });
 
-  // Map pour stocker les infos des joueurs
-  const knownPlayers = new Map<string, TempPlayer>();
-
-  // Extrait les noms des équipes
-  const teamLine = lines.find(line => 
-    line.includes('(') && 
-    !line.includes('Dis. Ord. Ter.') &&
-    !line.includes('Licence - Nom')
-  );
-
-  if (teamLine) {
-    const team1Match = teamLine.match(/^([^(]+)/);
-    if (team1Match) {
-      team1 = team1Match[1].trim();
-    }
-    const team2Match = teamLine.match(/\)\s*([^(]+)/);
-    if (team2Match) {
-      team2 = team2Match[1].trim();
-    }
-  }
-
-  // Premier passage : traiter tous les matchs sauf les mixtes
-  for (const line of lines) {
-    const matchTypeMatch = line.match(/^(SH|SD|DH|DD|DX)\d/);
-    if (matchTypeMatch) {
-      if (currentMatch) {
-        if (currentMatch.type.startsWith('DX')) {
-          mixedMatches.push(currentMatch);
-        } else {
-          matches.push(currentMatch);
-        }
-      }
-      
-      const matchType = matchTypeMatch[0];
-      currentMatch = {
-        type: matchType,
-        players: []
-      };
-
-      // Si ce n'est pas un mixte, traiter les joueurs immédiatement
-      if (!matchType.startsWith('DX')) {
-        const playerNames = line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
-        playerNames.forEach((playerMatch, index) => {
-          const name = playerMatch.split('-')[1].trim();
-          const isFemale = isPlayerFemale(matchType, index, name);
-          const team = getTeamId(matchType, index);
-          // Stocker les infos du joueur
-          knownPlayers.set(name, { name, isFemale, team, matchType });
-          currentMatch?.players.push({ name, isFemale, team });
-        });
-      }
-    } else if (!line.includes('Victoires') && !line.includes('Totaux')) {
-      const playerNames = line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
-      if (playerNames && currentMatch && !currentMatch.type.startsWith('DX')) {
-        playerNames.forEach((playerMatch, index) => {
-          const name = playerMatch.split('-')[1].trim();
-          const isFemale = isPlayerFemale(currentMatch.type, currentMatch.players.length, name);
-          const team = getTeamId(currentMatch.type, currentMatch.players.length);
-          // Stocker les infos du joueur
-          knownPlayers.set(name, { name, isFemale, team, matchType: currentMatch.type });
-          currentMatch.players.push({ name, isFemale, team });
-        });
-      }
-    }
-  }
-
-  // Ajouter le dernier match non-mixte
-  if (currentMatch) {
-    if (currentMatch.type.startsWith('DX')) {
-      mixedMatches.push(currentMatch);
-    } else {
-      matches.push(currentMatch);
-    }
-  }
-
-  // Deuxième passage : traiter les mixtes
-  for (const mixedMatch of mixedMatches) {
-    let matchLines: string[] = [];
-    let foundMatch = false;
-    
-    console.log('=== Traitement du match mixte ===', mixedMatch.type);
-    
-    // Collecter toutes les lignes pertinentes pour ce match mixte
-    for (const line of lines) {
-      console.log('Analyse ligne:', line);
-      console.log('Regex testée:', new RegExp(`^${mixedMatch.type}(?:[\\s\\d]|$)`));
-      
-      if (line.match(new RegExp(`^${mixedMatch.type}(?:[\\s\\d]|$)`))) {
-        console.log('✅ Ligne de début de match trouvée:', line);
-        foundMatch = true;
-        matchLines.push(line);
-      } else if (foundMatch) {
-        console.log('Dans le match, analyse de:', line);
-        if (line.match(/^(SH|SD|DH|DD|DX)\d/)) {
-          console.log('❌ Fin du match trouvée:', line);
-          break;
-        } else if (!line.includes('Victoires') && !line.includes('Totaux')) {
-          if (line.match(/\d{8}\s*-\s*[^(]+/)) {
-            console.log('✅ Ligne de joueur trouvée:', line);
-            matchLines.push(line);
-          }
-        }
-      }
-    }
-
-    console.log('Lignes collectées pour', mixedMatch.type, ':', matchLines);
-
-    // Extraire tous les joueurs
-    const playerNames = matchLines.flatMap(line => {
-      const matches = line.match(/\d{8}\s*-\s*[^(]+(?=\s*\(|\s+\d{8}|\s*$)/g) || [];
-      const names = matches.map(m => m.split('-')[1].trim());
-      console.log('Joueurs trouvés dans la ligne:', names);
-      return names;
-    });
-
-    console.log('Tous les joueurs trouvés:', playerNames);
-
-    // Traiter chaque joueur
-    playerNames.forEach((name, index) => {
-      const team = getTeamId(mixedMatch.type, index);
-      const knownPlayer = knownPlayers.get(name);
-      
-      console.log('Traitement du joueur:', {
-        name,
-        index,
-        team,
-        isKnown: !!knownPlayer,
-        knownInfo: knownPlayer
-      });
-
-      if (knownPlayer) {
-        mixedMatch.players.push({ name, isFemale: knownPlayer.isFemale, team });
-      } else {
-        const isFemale = name.match(/[eéèêë]\s*$/i) !== null;
-        console.log('Genre déterminé par le nom:', { name, isFemale });
-        mixedMatch.players.push({ name, isFemale, team });
-        knownPlayers.set(name, { name, isFemale, team, matchType: mixedMatch.type });
-      }
-    });
-
-    console.log('Joueurs finaux du match:', mixedMatch.players);
-  }
-
-  // Ajouter les mixtes à la fin
-  matches.push(...mixedMatches);
-
-  return {
-    team1,
-    team2,
-    matches
+  // Chercher les équipes dans chaque ligne
+  console.log("\n=== Test de extractTeams ===");
+  let result: ParsedResult = {
+    team1: "",
+    team2: "",
+    matches: []
   };
-}
 
-function isPlayerFemale(matchType: string, playerIndex: number, name: string): boolean {
-  const matchCategory = matchType.slice(0, 2);
-  
-  switch (matchCategory) {
-    case 'SD': // Simple Dame
-      return true;
-    case 'SH': // Simple Homme
-      return false;
-    case 'DD': // Double Dame
-      return true;
-    case 'DH': // Double Homme
-      return false;
-    case 'DX': // Double Mixte
-      // Pour chaque paire de joueurs dans le mixte
-      // L'équipe 1 est aux indices 0-1, l'équipe 2 aux indices 2-3
-      const pairIndex = Math.floor(playerIndex / 2); // 0 pour équipe 1, 1 pour équipe 2
-      const positionInPair = playerIndex % 2; // 0 pour premier joueur, 1 pour second
-      return positionInPair === 0; // Le premier joueur de chaque paire est une femme
-    default:
-      return false;
+  for (let i = 0; i < lines.length; i++) {
+    const teams = extractTeams(lines[i]);
+    if (teams) {
+      console.log(`\nÉquipes trouvées ligne ${i + 1}:`);
+      console.log("Texte:", lines[i]);
+      console.log("Équipes:", teams);
+      
+      // On a trouvé les équipes, on les enregistre et on arrête la recherche
+      result = { ...teams, matches: [] };
+      break;
+    }
   }
+
+  // Chercher les matchs dans chaque ligne
+  console.log("\n=== Test de extractMatch ===");
+  for (let i = 0; i < lines.length; i++) {
+    const singleMatch = extractSingleMatch(lines[i]);
+    if (singleMatch) {
+      console.log(`\nMatch simple trouvé ligne ${i + 1}:`);
+      console.log("Texte:", lines[i]);
+      console.log("Match:", singleMatch);
+      
+      // On a trouvé un match simple, on l'ajoute à la liste des matchs
+      result.matches.push(singleMatch);
+    } else {
+      const doubleMatch = extractDoubleMatch(lines[i]);
+      if (doubleMatch) {
+        console.log(`\nMatch double trouvé ligne ${i + 1}:`);
+        console.log("Texte:", lines[i]);
+        console.log("Match:", doubleMatch);
+        
+        // On a trouvé un match double, on l'ajoute à la liste des matchs
+        result.matches.push(doubleMatch);
+      }
+    }
+  }
+  console.log(result)
+  return result;
 }

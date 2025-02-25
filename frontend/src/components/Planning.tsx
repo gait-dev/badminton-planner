@@ -7,9 +7,6 @@ interface PlanningProps {
   onOptimize: () => void;
 }
 
-const MATCH_DURATION = 40; // minutes
-const REST_DURATION = 20; // minutes
-
 interface SolutionWithPauses {
   rounds: OptimizedMatch[][];
   pauses: Array<{
@@ -22,337 +19,166 @@ interface SolutionWithPauses {
 }
 
 const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
-  // Fonction pour vérifier si deux matchs peuvent être joués en même temps
-  const canPlaySimultaneously = (
-    match1: OptimizedMatch,
-    match2: OptimizedMatch | null,
-    schedule: OptimizedMatch[]
-  ): boolean => {
-    if (!match2) return true;
+  const [solution, setSolution] = useState<SolutionWithPauses | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [validSolutionsState, setValidSolutionsState] = useState<{
+    [score: number]: { [firstMatch: string]: Array<{ permutation: OptimizedMatch[]; pauses: number }> }
+  } | null>(null);
+  const [selectedFirstMatch, setSelectedFirstMatch] = useState<string>("");
 
-    // Pour chaque joueur du match1, on extrait l'ID original (sans le préfixe du match)
-    const match1PlayerIds = match1.players.map((p) => p.id.split("-")[2]);
-    const match2PlayerIds = match2
-      ? match2.players.map((p) => p.id.split("-")[2])
-      : [];
+  const generateAllPermutations = (arr: OptimizedMatch[]): OptimizedMatch[][] => {
+    const permutations: OptimizedMatch[][] = [];
 
-    // Vérifier si un joueur est commun aux deux matchs
-    const hasCommonPlayer = match1PlayerIds.some((id1) =>
-      match2PlayerIds.includes(id1)
-    );
-    if (hasCommonPlayer) {
-      return false;
-    }
-
-    // Pour tous les joueurs des deux matchs
-    const allPlayerIds = [...match1PlayerIds, ...match2PlayerIds];
-
-    // Vérifier si un des joueurs a joué dans les 40 minutes précédentes
-    const recentTime = Math.min(
-      match1.startTime,
-      match2 ? match2.startTime : Infinity
-    );
-    const previousMatches = schedule.filter(
-      (m) =>
-        m.startTime < recentTime && m.startTime >= recentTime - MATCH_DURATION
-    );
-
-    // Si un joueur a joué dans le match précédent, on ne peut pas jouer
-    return !previousMatches.some((m) =>
-      m.players.some((p) => allPlayerIds.includes(p.id.split("-")[2]))
-    );
-  };
-
-  // Fonction pour vérifier si un joueur a assez de repos
-  const hasEnoughRest = (
-    playerId: string,
-    match: OptimizedMatch,
-    schedule: OptimizedMatch[]
-  ): boolean => {
-    // Extraire l'ID original du joueur (sans le préfixe du match)
-    const originalPlayerId = playerId.split("-")[2];
-
-    const playerLastMatch = schedule
-      .filter((m) => m.startTime < match.startTime)
-      .find((m) =>
-        m.players.some((p) => p.id.split("-")[2] === originalPlayerId)
-      );
-
-    if (!playerLastMatch) return true;
-
-    const restTime =
-      match.startTime - (playerLastMatch.startTime + MATCH_DURATION);
-
-    return restTime >= REST_DURATION;
-  };
-
-  const findOptimalSchedule = (
-    matches: OptimizedMatch[]
-  ): {
-    solutions: {
-      [score: number]: { [firstMatch: string]: SolutionWithPauses[] };
-    };
-    bestSolution: SolutionWithPauses;
-  } => {
-    // Fonction pour obtenir l'ID unique d'un joueur (type de match + équipe + numéro)
-    const getPlayerId = (player: { id: string }): string => {
-      const [matchType, team, num] = player.id.split("-");
-      return `${team}-${num}`;
-    };
-
-    // Fonction pour obtenir le dernier match d'un joueur
-    const getLastMatchTime = (
-      playerId: string,
-      currentRoundIndex: number,
-      rounds: OptimizedMatch[][]
-    ): number | null => {
-      for (let i = currentRoundIndex - 1; i >= 0; i--) {
-        const round = rounds[i];
-        if (
-          round.some((match) =>
-            match.players.some((p) => getPlayerId(p) === playerId)
-          )
-        ) {
-          return i;
-        }
-      }
-      return null;
-    };
-
-    // Fonction pour vérifier si une paire de matchs peut être jouée ensemble
-    const canPlayTogether = (
-      match1: OptimizedMatch,
-      match2: OptimizedMatch
-    ): boolean => {
-      const match1PlayerIds = match1.players.map((p) => getPlayerId(p));
-      const match2PlayerIds = match2.players.map((p) => getPlayerId(p));
-
-      for (const id1 of match1PlayerIds) {
-        if (match2PlayerIds.includes(id1)) {
-          return false;
-        }
-      }
-
-      return true;
-    };
-
-    // Fonction pour vérifier si une solution est valide
-    const isValidSolution = (rounds: OptimizedMatch[][]): number => {
-      let delay = 0;
-      for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-        const round = rounds[roundIndex];
-
-        // Vérifier qu'il n'y a pas de conflit dans le même tour
-        if (round.length === 2 && !canPlayTogether(round[0], round[1])) {
-          return -1;
-        }
-
-        // Pour chaque match du tour
-        for (const match of round) {
-          // Pour chaque joueur du match
-          for (const player of match.players) {
-            const playerId = getPlayerId(player);
-            const lastMatchRound = getLastMatchTime(
-              playerId,
-              roundIndex,
-              rounds
-            );
-
-            // Si le joueur a joué dans un tour précédent
-            if (lastMatchRound !== null) {
-              // Vérifier qu'il y a au moins un tour de pause
-              if (roundIndex - lastMatchRound < 2) {
-                delay++;
-              }
-            }
-          }
-        }
-      }
-      return delay;
-    };
-
-    // Fonction pour générer toutes les permutations
-    function* generatePermutations(
-      arr: OptimizedMatch[]
-    ): Generator<OptimizedMatch[]> {
-      if (arr.length <= 1) {
-        yield arr;
+    const permute = (arr: OptimizedMatch[], result: OptimizedMatch[] = []) => {
+      if (arr.length === 0) {
+        permutations.push([...result]);
       } else {
         for (let i = 0; i < arr.length; i++) {
           const current = arr[i];
           const remaining = [...arr.slice(0, i), ...arr.slice(i + 1)];
-          for (const p of generatePermutations(remaining)) {
-            yield [current, ...p];
-          }
+          permute(remaining, [...result, current]);
         }
       }
     }
 
-    let permCount = 0;
+    permute(arr);
+    return permutations;
+  }
 
-    // Tester toutes les permutations possibles
-    let solutions: {
-      [score: number]: { [firstMatch: string]: SolutionWithPauses[] };
-    } = {};
+  const analyzePauses = (permutation: OptimizedMatch[]): number => {
+    let pauseCount = 0;
+    const playerLastMatch: { [playerId: string]: number } = {}; // Stocke l'index du dernier match de chaque joueur
 
-    // Fonction pour trouver les pauses nécessaires dans une solution
-    const findRequiredPauses = (rounds: OptimizedMatch[][]) => {
-      const pauses: SolutionWithPauses["pauses"] = [];
-      const playerLastMatch: {
-        [playerId: string]: { round: number; match: OptimizedMatch };
-      } = {};
+    // Parcourir tous les matchs
+    for (let matchIndex = 0; matchIndex < permutation.length; matchIndex++) {
+      const match = permutation[matchIndex];
+      
+      // Vérifier chaque joueur du match
+      for (const player of match.players) {
+        const playerId = player.id;
+        
+        // Si le joueur a déjà joué
+        if (playerLastMatch[playerId] !== undefined) {
+          const matchGap = matchIndex - playerLastMatch[playerId];
+          
+          // Si le joueur joue deux matchs d'affilée
+          if (matchGap === 1) {
+            return 99; // Solution abandonnée
+          }
+          
+          // Si le joueur a moins de 2 matchs d'écart
+          if (matchGap < 3) {
+            pauseCount++;
+          }
+        }
+        
+        // Mettre à jour le dernier match du joueur
+        playerLastMatch[playerId] = matchIndex;
+      }
+    }
 
-      rounds.forEach((round, roundIndex) => {
-        round.forEach((match) => {
-          match.players.forEach((player) => {
-            const playerId = `${player.name}-${player.teamId}`;
-            if (playerLastMatch[playerId]) {
-              const lastMatch = playerLastMatch[playerId];
-              if (roundIndex - lastMatch.round < 2) {
-                pauses.push({
-                  player: player.name,
-                  fromMatch: lastMatch.match.type,
-                  toMatch: match.type,
-                  roundFrom: lastMatch.round,
-                  roundTo: roundIndex,
-                });
-              }
-            }
-            playerLastMatch[playerId] = { round: roundIndex, match };
-          });
-        });
+    return pauseCount;
+  }
+
+  const testPermutations = () => {
+    console.time('Permutations');
+    const allPermutations = generateAllPermutations(matches);
+    console.timeEnd('Permutations');
+    
+    // Analyser les pauses pour chaque permutation
+    const permutationsWithPauses = allPermutations.map(perm => ({
+      permutation: perm,
+      pauses: analyzePauses(perm)
+    }));
+
+    // Filtrer les solutions valides (pauses < 99)
+    const validSolutions = permutationsWithPauses.filter(sol => sol.pauses < 99);
+    
+    console.log(`Nombre total de permutations: ${allPermutations.length}`);
+    console.log(`Nombre de solutions valides: ${validSolutions.length}`);
+    console.log('Solutions valides par nombre de pauses:');
+    
+    // Grouper les solutions par nombre de pauses
+    const solutionsByPauses: { [key: number]: typeof validSolutions } = {};
+    validSolutions.forEach(sol => {
+      if (!solutionsByPauses[sol.pauses]) {
+        solutionsByPauses[sol.pauses] = [];
+      }
+      solutionsByPauses[sol.pauses].push(sol);
+    });
+    
+    // Afficher chaque groupe de solutions
+    Object.entries(solutionsByPauses)
+      .sort(([a], [b]) => Number(a) - Number(b)) // Trier par nombre de pauses
+      .forEach(([pauses, solutions]) => {
+        console.log(`\n=== Solutions avec ${pauses} pause(s) (${solutions.length} solutions)`);
+        console.log(solutions)
       });
-      return pauses;
-    };
 
-    for (const permutation of generatePermutations(matches)) {
-      permCount++;
+    return validSolutions;
+  }
 
-      // Diviser en tours de 2 matchs maximum
-      const rounds: OptimizedMatch[][] = [];
-      for (let i = 0; i < permutation.length; i += 2) {
-        const round = permutation.slice(i, i + 2);
-        rounds.push(round);
-      }
-
-      // Vérifier si cette solution est valide
-      let validity = isValidSolution(rounds);
-
-      // Ne stocker que les solutions avec un score positif ou nul
-      if (validity >= 0) {
-        const firstMatchType = rounds[0][0].type;
-
-        // Initialiser les structures si nécessaire
-        if (!solutions[validity]) {
-          solutions[validity] = {};
-        }
-        if (!solutions[validity][firstMatchType]) {
-          solutions[validity][firstMatchType] = [];
-        }
-
-        // Ajouter la solution avec ses pauses
-        solutions[validity][firstMatchType].push({
-          rounds,
-          pauses: findRequiredPauses(rounds),
-        });
-      }
-    }
-    console.timeEnd("Permutations");
-
-    // Compter le nombre total de solutions par score
-    const solutionCounts = Object.entries(solutions)
-      .map(([score, solutions]) => {
-        const count = Object.values(solutions).reduce(
-          (acc, sols) => acc + sols.length,
-          0
-        );
-        return `${count} solution${count > 1 ? "s" : ""} avec ${score} pause${
-          score !== "1" ? "s" : ""
-        }`;
-      })
-      .join(", ");
-
-    console.log(`Testé ${permCount} permutations, trouvé ${solutionCounts}`);
-
-    // Prendre la meilleure solution disponible (score le plus bas)
-    const scores = Object.keys(solutions)
-      .map(Number)
-      .sort((a, b) => a - b);
-    if (scores.length > 0) {
-      const bestScore = scores[0];
-      console.log(`Meilleures solutions (score ${bestScore}):`);
-
-      Object.entries(solutions[bestScore]).forEach(
-        ([matchType, matchSolutions]) => {
-          console.log(
-            `  ${matchType}: ${matchSolutions.length} solution${
-              matchSolutions.length > 1 ? "s" : ""
-            }`
-          );
-          // Afficher les pauses pour la première solution de ce type
-          if (matchSolutions.length > 0) {
-            console.log("  Pauses nécessaires:");
-            matchSolutions[0].pauses.forEach((pause) => {
-              console.log(
-                `    ${pause.player}: entre ${pause.fromMatch} (tour ${
-                  pause.roundFrom + 1
-                }) et ${pause.toMatch} (tour ${pause.roundTo + 1})`
-              );
-            });
-          }
-        }
-      );
-
-      const firstMatchType = Object.keys(solutions[bestScore])[0];
-      return {
-        solutions,
-        bestSolution: solutions[bestScore][firstMatchType][0],
-      };
-    }
-
-    throw new Error("Aucune solution valide trouvée");
-  };
-
-  const formatTime = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h${mins.toString().padStart(2, "0")}`;
-  };
-
-  const [solution, setSolution] = React.useState<SolutionWithPauses | null>(
-    null
-  );
-  const [isCalculating, setIsCalculating] = React.useState(false);
-  const [allSolutions, setAllSolutions] = React.useState<{
-    [score: number]: { [firstMatch: string]: SolutionWithPauses[] };
-  } | null>(null);
-  const [selectedFirstMatch, setSelectedFirstMatch] =
-    React.useState<string>("");
-
-  const handleOptimize = useCallback(async () => {
+  const handleOptimize = useCallback(() => {
     setIsCalculating(true);
     try {
-      const { solutions: newSolutions, bestSolution } =
-        findOptimalSchedule(matches);
-      setAllSolutions(newSolutions);
-      const bestScore = Math.min(...Object.keys(newSolutions).map(Number));
-      const firstMatchType = Object.keys(newSolutions[bestScore])[0];
-      setSelectedFirstMatch(firstMatchType);
-      setSolution(bestSolution);
+      const validSolutions = testPermutations();
+      
+      // Grouper les solutions par nombre de pauses et premier match
+      const solutionsByPausesAndFirst: typeof validSolutionsState = {};
+      validSolutions.forEach(solution => {
+        const firstMatch = solution.permutation[0].type;
+        const pauses = solution.pauses;
+        
+        if (!solutionsByPausesAndFirst[pauses]) {
+          solutionsByPausesAndFirst[pauses] = {};
+        }
+        if (!solutionsByPausesAndFirst[pauses][firstMatch]) {
+          solutionsByPausesAndFirst[pauses][firstMatch] = [];
+        }
+        solutionsByPausesAndFirst[pauses][firstMatch].push(solution);
+      });
+
+      setValidSolutionsState(solutionsByPausesAndFirst);
+
+      // Trouver le meilleur score
+      const bestScore = Math.min(...Object.keys(solutionsByPausesAndFirst).map(Number));
+      
+      // Prendre le premier type de match disponible pour le meilleur score
+      const firstMatchTypes = Object.keys(solutionsByPausesAndFirst[bestScore]);
+      setSelectedFirstMatch(firstMatchTypes[0]);
+
+      // Définir la première solution comme solution actuelle
+      const firstSolution = solutionsByPausesAndFirst[bestScore][firstMatchTypes[0]][0];
+      const rounds: OptimizedMatch[][] = [];
+      for (let i = 0; i < firstSolution.permutation.length; i += 2) {
+        rounds.push(firstSolution.permutation.slice(i, i + 2));
+      }
+      setSolution({
+        rounds,
+        pauses: []
+      });
     } finally {
       setIsCalculating(false);
     }
   }, [matches]);
 
-  // Gérer le changement de premier match
-  const handleFirstMatchChange = (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleFirstMatchChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const newFirstMatch = event.target.value;
     setSelectedFirstMatch(newFirstMatch);
-    if (allSolutions) {
-      const bestScore = Math.min(...Object.keys(allSolutions).map(Number));
-      setSolution(allSolutions[bestScore][newFirstMatch][0]);
+
+    // Mettre à jour la solution avec la nouvelle sélection
+    if (validSolutionsState) {
+      const bestScore = Math.min(...Object.keys(validSolutionsState).map(Number));
+      const newSolution = validSolutionsState[bestScore][newFirstMatch][0];
+      
+      const rounds: OptimizedMatch[][] = [];
+      for (let i = 0; i < newSolution.permutation.length; i += 2) {
+        rounds.push(newSolution.permutation.slice(i, i + 2));
+      }
+      setSolution({
+        rounds,
+        pauses: []
+      });
     }
   };
 
@@ -409,22 +235,18 @@ const Planning: React.FC<PlanningProps> = ({ matches, onOptimize }) => {
       >
         {isCalculating ? "Calcul en cours..." : "Ordre des matchs"}
       </button>
-      {allSolutions && (
+
+      {validSolutionsState && (
         <>
-          <label
-            className="block text-sm font-medium text-gray-700 mt-5 "
-            htmlFor=""
-          >
-            Choisissez le premier match
+          <label className="block text-sm font-medium text-gray-700 mt-4">
+            Premier match
           </label>
           <select
             value={selectedFirstMatch}
             onChange={handleFirstMatchChange}
-            className="mt-4 w-full p-2 rounded-md border border-gray-300"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md bg-white"
           >
-            {Object.keys(
-              allSolutions[Math.min(...Object.keys(allSolutions).map(Number))]
-            ).map((firstMatch) => (
+            {Object.keys(validSolutionsState[Math.min(...Object.keys(validSolutionsState).map(Number))]).map((firstMatch) => (
               <option key={firstMatch} value={firstMatch}>
                 {firstMatch}
               </option>
