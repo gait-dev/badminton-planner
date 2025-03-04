@@ -120,7 +120,7 @@ export default function Home() {
                   <GoogleMap
                     mapContainerStyle={containerStyle}
                     center={center}
-                    zoom={17}
+                    zoom={16}
                   />
                 </LoadScript>
                 <p className="mt-2 text-sm text-white">104 Place Charles de Gaulle, 84400 Apt</p>
