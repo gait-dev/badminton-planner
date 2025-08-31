@@ -2,6 +2,8 @@ import ContactForm from '../components/ContactForm'
 import React from 'react';
 import FacebookIcon from '../components/icons/FacebookIcon'
 import { GoogleMap, LoadScript } from '@react-google-maps/api';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const containerStyle = {
   width: '100%',
@@ -14,6 +16,7 @@ const center = {
 };
 
 export default function Home() {
+  const { user } = useAuth();
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = '/resources/Prise de licence 2025.zip';
@@ -24,9 +27,24 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
       <div className="container mx-auto py-6 px-20 h-screen">
-        <div className="grid grid-cols-2 grid-rows-3 gap-6 h-full">
+        <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-6 h-full">
+          {/* Card Authentification */}
+          <div className="col-span-2 bg-gray-50/50 border border-gray-100 rounded-md p-3 flex items-center justify-end text-sm">
+            <div className="flex items-center gap-2 text-gray-500">
+              {user ? (
+                <span>Bienvenue, {user.first_name}</span>
+              ) : (
+                <Link
+                  to="/login"
+                  className="text-aptbc-green hover:text-aptbc-green/90 transition-colors"
+                >
+                  Connexion
+                </Link>
+              )}
+            </div>
+          </div>
           {/* Card Logo et Horaires - Prend 2 colonnes, 1 ligne */}
           <div className="col-span-2 row-span-1 bg-gray-50 border border-gray-200 rounded-lg rounded-l-none shadow-lg flex overflow-hidden">
             <img src="/logo_aptbc.jpg" alt="Logo du club" className="h-full object-cover border-r border-gray-200" />
@@ -116,7 +134,7 @@ export default function Home() {
 
               {/* Section Google Maps */}
               <div className="flex flex-col">
-                <LoadScript googleMapsApiKey="AIzaSyCdkft1mwtFH6_x7EGzwT-zHjVBden3yag">
+                <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""}>
                   <GoogleMap
                     mapContainerStyle={containerStyle}
                     center={center}

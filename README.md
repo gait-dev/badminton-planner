@@ -2,6 +2,8 @@
 
 Application web pour optimiser les rotations d'équipes lors des matchs de badminton en interclub.
 
+Voir [NOTES.md](NOTES.md) pour la documentation technique et les instructions d'installation.
+
 ## Fonctionnalités
 
 - Gestion des équipes et des joueurs
