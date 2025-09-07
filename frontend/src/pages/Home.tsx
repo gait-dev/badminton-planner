@@ -1,7 +1,7 @@
 import ContactForm from '../components/ContactForm'
 import React from 'react';
 import FacebookIcon from '../components/icons/FacebookIcon'
-import { GoogleMap, LoadScript } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,16 +11,16 @@ const containerStyle = {
 };
 
 const center = {
-  lat: 43.87672596342212,
-  lng: 5.402588467207867
+  lat: 43.87241873752749,
+  lng: 5.399661546755915
 };
 
 export default function Home() {
   const { user } = useAuth();
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = '/resources/Prise de licence 2025.zip';
-    link.download = 'Prise de licence 2025.zip';
+    link.href = '/resources/Prise de licence 2026.zip';
+    link.download = 'Prise de licence 2026.zip';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -31,7 +31,7 @@ export default function Home() {
       <div className="container mx-auto py-6 px-20 h-screen">
         <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-6 h-full">
           {/* Card Authentification */}
-          <div className="col-span-2 bg-gray-50/50 border border-gray-100 rounded-md p-3 flex items-center justify-end text-sm">
+          {/*<div className="col-span-2 bg-gray-50/50 border border-gray-100 rounded-md p-3 flex items-center justify-end text-sm">
             <div className="flex items-center gap-2 text-gray-500">
               {user ? (
                 <span>Bienvenue, {user.first_name}</span>
@@ -44,7 +44,8 @@ export default function Home() {
                 </Link>
               )}
             </div>
-          </div>
+          </div>*/}
+          <div></div>
           {/* Card Logo et Horaires - Prend 2 colonnes, 1 ligne */}
           <div className="col-span-2 row-span-1 bg-gray-50 border border-gray-200 rounded-lg rounded-l-none shadow-lg flex overflow-hidden">
             <img src="/logo_aptbc.jpg" alt="Logo du club" className="h-full object-cover border-r border-gray-200" />
@@ -56,7 +57,7 @@ export default function Home() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr>
-                          {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'].map((jour) => (
+                          {[ 'Mardi', 'Samedi', 'Samedi', 'Dimanche'].map((jour) => (
                             <th key={jour} className="border-b-2 border-aptbc-green/20 pb-2 px-2 text-aptbc-black font-semibold">
                               {jour}
                             </th>
@@ -65,18 +66,16 @@ export default function Home() {
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="pt-2 px-2 text-center text-aptbc-black/80">19h-22h</td>
-                          <td className="pt-2 px-2 text-center text-aptbc-black/80">19h-22h30</td>
-                          <td className="pt-2 px-2 text-center text-aptbc-black/80">17h30-19h30</td>
-                          <td className="pt-2 px-2 text-center text-aptbc-black/80">19h-22h</td>
-                          <td className="pt-2 px-2 text-center text-aptbc-black/80">19h-21h</td>
+                          <td className="pt-2 px-2 text-center text-aptbc-black/80">19h-23h</td>
+                          <td className="pt-2 px-2 text-center text-aptbc-black/80">8h30-11h</td>
+                          <td className="pt-2 px-2 text-center text-aptbc-black/80">11h-12h30</td>
+                          <td className="pt-2 px-2 text-center text-aptbc-black/80">9h-12h</td>
                         </tr>
                         <tr>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-violet-500 rounded-sm text-xs font-semibold text-center">Guigou</span>
                               <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
-                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Jeunes</span>
                             </div>
                           </td>
                           <td className="pt-2 px-2">
@@ -87,26 +86,24 @@ export default function Home() {
                           </td>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-violet-500 rounded-sm text-xs font-semibold text-center">Guigou</span>
                               <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Jeunes</span>
                             </div>
                           </td>
                           <td className="pt-2 px-2">
                             <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
+                              <span className="w-24 px-4 py-1 text-white bg-violet-500 rounded-sm text-xs font-semibold text-center">Guigou</span>
                               <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
-                            </div>
-                          </td>
-                          <td className="pt-2 px-2">
-                            <div className="flex flex-col gap-1 items-center h-[4.5rem]">
-                              <span className="w-24 px-4 py-1 text-white bg-purple-500 rounded-sm text-xs font-semibold text-center">Lycée</span>
-                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Adultes</span>
-                              <span className="w-24 px-4 py-1 text-white bg-aptbc-green rounded-sm text-xs font-semibold text-center">Jeunes</span>
                             </div>
                           </td>
                         </tr>
                       </tbody>
                     </table>
+                    <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-sm text-yellow-700 font-medium text-center">
+                        ⚠️ Horaires temporaires pendant les travaux du lycée
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -130,6 +127,16 @@ export default function Home() {
                   Licence Jeune:<span className="text-aptbc-green font-bold"> 120 euros</span> 
                 </div>
                 <div>Des réductions sont disponibles pour les familles.</div>
+                <button
+                  onClick={handleDownload}
+                  className="w-full bg-white text-aptbc-black px-4 py-3 rounded hover:bg-gray-100 transition-colors flex items-center justify-center space-x-4 mt-6"
+                >
+                  <img src="/zip.png" alt="Dossier" className="w-10 h-10" />
+                  <div className="text-left">
+                    <div className="text-aptbc-green font-bold">Dossier d'inscription</div>
+                    <div className="text-gray-600">Saison 2025 - 2026</div>
+                  </div>
+                </button>
               </div>
 
               {/* Section Google Maps */}
@@ -139,25 +146,14 @@ export default function Home() {
                     mapContainerStyle={containerStyle}
                     center={center}
                     zoom={16}
-                  />
+                  >
+                    <Marker position={center} />
+                  </GoogleMap>
                 </LoadScript>
-                <p className="mt-2 text-sm text-white">104 Place Charles de Gaulle, 84400 Apt</p>
+                <p className="mt-2 text-sm text-white">130 Bd Maréchal Joffre, 84400 Apt</p>
               </div>
             </div>
 
-            {/* Bouton téléchargement sur 2 colonnes */}
-            <div className="mt-4">
-              <button
-                onClick={handleDownload}
-                className="w-full bg-white text-aptbc-black px-4 py-3 rounded hover:bg-gray-100 transition-colors flex items-center justify-center space-x-4"
-              >
-                <img src="zip.png" alt="Dossier" className="w-12 h-12" />
-                <div className="text-left">
-                  <div className="text-aptbc-green font-bold">Dossier d'inscription</div>
-                  <div className="text-gray-600">Saison 2024 - 2025</div>
-                </div>
-              </button>
-            </div>
           </div>
 
           {/* Card Formulaire de Contact - 1 colonne, 2 lignes */}

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import Select from 'react-select';
 
 interface User {
   id: number;
   email: string;
   first_name: string;
   last_name: string;
+  license_number: string;
 }
 
 interface AddPurchaseFormProps {
@@ -20,10 +22,12 @@ const PURCHASE_TYPES = [
 ];
 
 export default function AddPurchaseForm({ users, onPurchaseAdded }: AddPurchaseFormProps) {
-  const [userId, setUserId] = useState('');
-  const [type, setType] = useState(PURCHASE_TYPES[0].id);
-  const [quantity, setQuantity] = useState(1);
-  const [amount, setAmount] = useState(PURCHASE_TYPES[0].defaultAmount);
+  const [selectedUser, setSelectedUser] = useState<string>("");
+  const [type, setType] = useState<string>(PURCHASE_TYPES[0].id);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [amount, setAmount] = useState<number>(PURCHASE_TYPES[0].defaultAmount);
+  const [message, setMessage] = useState<string>("");
+  const [error, setError] = useState<string>("");
   const { getToken } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +42,7 @@ export default function AddPurchaseForm({ users, onPurchaseAdded }: AddPurchaseF
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: parseInt(userId),
+          user_id: parseInt(selectedUser),
           type,
           quantity,
           amount: amount * quantity
@@ -46,14 +50,18 @@ export default function AddPurchaseForm({ users, onPurchaseAdded }: AddPurchaseF
       });
 
       if (response.ok) {
-        setUserId('');
+        setMessage('Achat créé avec succès');
+        setSelectedUser("");
         setType(PURCHASE_TYPES[0].id);
         setQuantity(1);
         setAmount(PURCHASE_TYPES[0].defaultAmount);
         onPurchaseAdded();
+        setTimeout(() => setMessage(''), 3000);
       }
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout:', error);
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout:', err);
+      setError('Erreur lors de la création de l\'achat');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -65,26 +73,30 @@ export default function AddPurchaseForm({ users, onPurchaseAdded }: AddPurchaseF
     }
   };
 
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow">
+      {message && <div className="p-4 bg-green-100 text-green-700 rounded-md">{message}</div>}
+      {error && <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>}
+
       <div>
-        <label htmlFor="user" className="block text-sm font-medium text-gray-700">
-          Membre
-        </label>
-        <select
-          id="user"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          required
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-        >
-          <option value="">Sélectionner un membre</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.first_name} {user.last_name}
-            </option>
-          ))}
-        </select>
+        <label htmlFor="user" className="block text-sm font-medium text-gray-700">Membre</label>
+        <div className="mt-1">
+          <Select
+            id="user"
+            value={users.find(u => u.id.toString() === selectedUser)}
+            onChange={(option) => setSelectedUser(option?.id.toString() || "")}
+            options={users}
+            getOptionLabel={(user) => `${user.first_name} ${user.last_name} - ${user.license_number}`}
+            getOptionValue={(user) => user.id.toString()}
+            placeholder="Rechercher un membre..."
+            noOptionsMessage={() => "Aucun membre trouvé"}
+            className="react-select"
+            classNamePrefix="react-select"
+            required
+            isClearable
+          />
+        </div>
       </div>
 
       <div>

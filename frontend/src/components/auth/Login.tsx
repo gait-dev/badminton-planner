@@ -13,8 +13,12 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(identifier, password);
-      navigate('/profile');
+      const result = await login(identifier, password);
+      if (result?.user?.role === 'admin') {
+        navigate('/admin/purchases');
+      } else {
+        navigate('/profile');
+      }
     } catch (err) {
       setError('Email ou mot de passe incorrect');
     }

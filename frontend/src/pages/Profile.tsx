@@ -98,12 +98,18 @@ export default function Profile() {
                 <h3 className="text-lg font-medium text-gray-900">Achats impayés</h3>
                 <div className="mt-4 space-y-4">
                   {purchases.map((purchase) => (
-                    <div key={purchase.id} className="bg-red-50 p-4 rounded-md">
+                    <div key={`${purchase.type}-${purchase.created_at}`} className="bg-red-50 p-4 rounded-md">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-sm font-medium text-red-800">
-                            {purchase.type_display} ({purchase.quantity})
-                          </h4>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium text-red-800">
+                              {purchase.quantity}
+                            </span>
+                            <span className="text-red-800">×</span>
+                            <h4 className="text-sm font-medium text-red-800">
+                              {purchase.type_display}
+                            </h4>
+                          </div>
                           <p className="mt-1 text-sm text-red-700">
                             Montant : {purchase.amount}€
                           </p>
@@ -132,12 +138,18 @@ export default function Profile() {
               <h3 className="text-lg font-medium text-gray-900">Historique des achats</h3>
               <div className="mt-4 space-y-4">
                 {allPurchases.map((purchase) => (
-                  <div key={purchase.id} className={`${purchase.paid ? 'bg-green-50' : 'bg-red-50'} p-4 rounded-md`}>
+                  <div key={`${purchase.type}-${purchase.created_at}`} className={`${purchase.paid ? 'bg-green-50' : 'bg-red-50'} p-4 rounded-md`}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className={`text-sm font-medium ${purchase.paid ? 'text-green-800' : 'text-red-800'}`}>
-                          {purchase.type_display} ({purchase.quantity})
-                        </h4>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-sm font-medium ${purchase.paid ? 'text-green-800' : 'text-red-800'}`}>
+                            {purchase.quantity}
+                          </span>
+                          <span className={purchase.paid ? 'text-green-800' : 'text-red-800'}>×</span>
+                          <h4 className={`text-sm font-medium ${purchase.paid ? 'text-green-800' : 'text-red-800'}`}>
+                            {purchase.type_display}
+                          </h4>
+                        </div>
                         <p className={`mt-1 text-sm ${purchase.paid ? 'text-green-700' : 'text-red-700'}`}>
                           Montant : {purchase.amount}€
                         </p>

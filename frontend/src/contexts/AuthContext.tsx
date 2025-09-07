@@ -6,16 +6,17 @@ if (!import.meta.env.VITE_API_URL) {
 
 interface User {
   id: number;
-  email?: string;
-  license_number?: string;
+  username: string;
+  email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  license_number: string;
+  is_admin: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (identifier: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<{user: User | null}>;
   logout: () => void;
   register: (userData: RegisterData) => Promise<void>;
   getToken: () => Promise<string | null>;
@@ -62,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (identifier: string, password: string) => {
+  const login = async (identifier: string, password: string): Promise<{user: User | null}> => {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -76,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await response.json();
     localStorage.setItem('token', data.access);
     setUser(data.user);
+    return { user: data.user };
   };
 
   const register = async (userData: RegisterData) => {

@@ -20,6 +20,8 @@ interface Purchase {
 
 export default function PurchaseList() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [filteredPurchases, setFilteredPurchases] = useState<Purchase[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
 
@@ -35,6 +37,7 @@ export default function PurchaseList() {
         if (response.ok) {
           const data = await response.json();
           setPurchases(data);
+          setFilteredPurchases(data);
         }
       } catch (error) {
         console.error('Erreur lors du chargement des achats:', error);
@@ -72,53 +75,72 @@ export default function PurchaseList() {
     return <div>Chargement...</div>;
   }
 
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    const filtered = purchases.filter(purchase => 
+      `${purchase.user.first_name} ${purchase.user.last_name}`.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredPurchases(filtered);
+  };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membre</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {purchases.map((purchase) => (
-            <tr key={purchase.id}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {purchase.user.first_name} {purchase.user.last_name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">{purchase.type_display}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{purchase.quantity}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{purchase.amount}€</td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {new Date(purchase.created_at).toLocaleDateString()}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  purchase.paid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {purchase.paid ? 'Payé' : 'Non payé'}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                {!purchase.paid && (
-                  <button
-                    onClick={() => markAsPaid(purchase.id)}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    Marquer comme payé
-                  </button>
-                )}
-              </td>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <input
+          type="text"
+          placeholder="Rechercher par nom..."
+          value={searchTerm}
+          onChange={(e) => handleSearch(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-md focus:ring-aptbc-green focus:border-aptbc-green"
+        />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membre</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredPurchases.map((purchase) => (
+              <tr key={purchase.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {purchase.user.first_name} {purchase.user.last_name}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">{purchase.type_display}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{purchase.quantity}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{purchase.amount}€</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {new Date(purchase.created_at).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    purchase.paid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {purchase.paid ? 'Payé' : 'Non payé'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  {!purchase.paid && (
+                    <button
+                      onClick={() => markAsPaid(purchase.id)}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      Marquer comme payé
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

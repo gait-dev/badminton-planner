@@ -12,7 +12,12 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class PurchaseSerializer(serializers.ModelSerializer):
+    type_display = serializers.SerializerMethodField()
+
+    def get_type_display(self, obj):
+        return obj.get_type_display()
+
     class Meta:
         model = Purchase
-        fields = ('id', 'type', 'quantity', 'amount', 'paid', 'paid_at', 'created_at', 'user')
+        fields = ('id', 'type', 'type_display', 'quantity', 'amount', 'paid', 'paid_at', 'created_at', 'user')
         read_only_fields = ('created_at',)
