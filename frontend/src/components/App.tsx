@@ -15,7 +15,7 @@ export default function App() {
           {/* <Route path="/login" element={<Navigate to="/" replace />} /> */}
           {/* <Route path="/register" element={<Navigate to="/" replace />} /> */}
           {/* <Route path="/admin/purchases" element={<AdminPurchases />} /> */}
-          {/* <Route path="/planner" element={<BadmintonPlanner />} /> */}
+          <Route path="/planner" element={<BadmintonPlanner />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
